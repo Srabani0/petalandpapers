@@ -134,6 +134,7 @@ model User {
   reviews                Review[]
   inventoryLogsPerformed InventoryLog[]
   refreshTokens          RefreshToken[]
+  wishlistItems          WishlistItem[]
 
   @@map("users")
 }
@@ -186,6 +187,10 @@ model Category {
   id          String   @id @default(uuid())
   name        String   @unique
   slug        String   @unique
+  // Not in the original SRS table — added in Phase 2 so SKUs can follow the
+  // blueprint's short-code convention (SCRAP-001, BOUQ-001, ...) without
+  // guessing a prefix from the category name.
+  skuPrefix   String   @unique
   description String?
   imageUrl    String?
   isActive    Boolean  @default(true)
@@ -227,6 +232,7 @@ model Product {
   customizationRequests  CustomizationRequest[]
   reviews                Review[]
   inventoryLogs          InventoryLog[]
+  wishlistItems          WishlistItem[]
 
   @@index([categoryId])
   @@index([status])
@@ -344,6 +350,20 @@ model CartItem {
   @@index([cartId])
   @@index([productId])
   @@map("cart_items")
+}
+
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist_items")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

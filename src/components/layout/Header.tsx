@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, Search, Heart, ShoppingBag } from "lucide-react";
+import { Menu, X, Search, Heart, ShoppingBag, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 
@@ -17,7 +17,15 @@ const NAV_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-export function Header({ user = null }: { user?: HeaderUser }) {
+export function Header({
+  user = null,
+  cartCount = 0,
+  wishlistCount = 0,
+}: {
+  user?: HeaderUser;
+  cartCount?: number;
+  wishlistCount?: number;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -65,13 +73,25 @@ export function Header({ user = null }: { user?: HeaderUser }) {
           </IconButton>
           <IconButton href="/wishlist" label="Wishlist" className="hidden sm:inline-flex">
             <Heart className="h-5 w-5" />
+            {wishlistCount > 0 ? (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-cream">
+                {wishlistCount > 9 ? "9+" : wishlistCount}
+              </span>
+            ) : null}
           </IconButton>
+          {user && user.role === "CUSTOMER" ? (
+            <IconButton href="/orders" label="Your Orders" className="hidden sm:inline-flex">
+              <Package className="h-5 w-5" />
+            </IconButton>
+          ) : null}
           <AccountMenu user={user} />
           <IconButton href="/cart" label="Cart">
             <ShoppingBag className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-cream">
-              0
-            </span>
+            {cartCount > 0 ? (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-cream">
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            ) : null}
           </IconButton>
 
           <button
@@ -92,6 +112,7 @@ export function Header({ user = null }: { user?: HeaderUser }) {
             {[
               ...NAV_LINKS,
               { href: "/wishlist", label: "Wishlist" },
+              ...(user && user.role === "CUSTOMER" ? [{ href: "/orders", label: "Your Orders" }] : []),
               user
                 ? { href: user.role === "ADMIN" ? "/admin" : "/", label: `Hi, ${user.name.split(" ")[0]}` }
                 : { href: "/login", label: "Account" },

@@ -44,3 +44,46 @@ export function passwordResetEmail({ name, otp }: { name: string; otp: string })
      <p style="font-size: 12px; color: #7a756c;">If you didn't request this, you can safely ignore this email.</p>`,
   );
 }
+
+export function orderStatusEmail({
+  name,
+  orderNumber,
+  statusLabel,
+  trackingNumber,
+  courierName,
+  orderUrl,
+}: {
+  name: string;
+  orderNumber: string;
+  statusLabel: string;
+  trackingNumber?: string | null;
+  courierName?: string | null;
+  orderUrl: string;
+}) {
+  const trackingLine =
+    trackingNumber || courierName
+      ? `<p style="line-height: 1.6;">${courierName ? `Courier: <strong>${courierName}</strong>. ` : ""}${trackingNumber ? `Tracking number: <strong>${trackingNumber}</strong>.` : ""}</p>`
+      : "";
+  return baseTemplate(
+    `Order ${orderNumber} update`,
+    `<p style="line-height: 1.6;">Hi ${name}, your order is now <strong>${statusLabel}</strong>.</p>
+     ${trackingLine}
+     ${button(orderUrl, "View Your Order")}`,
+  );
+}
+
+export function designPreviewReadyEmail({
+  name,
+  orderNumber,
+  reviewUrl,
+}: {
+  name: string;
+  orderNumber: string;
+  reviewUrl: string;
+}) {
+  return baseTemplate(
+    `Your design is ready to review`,
+    `<p style="line-height: 1.6;">Hi ${name}, we've finished a design preview for your order ${orderNumber}. Take a look and let us know if it's ready to go, or if you'd like changes.</p>
+     ${button(reviewUrl, "Review My Design")}`,
+  );
+}

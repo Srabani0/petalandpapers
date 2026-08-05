@@ -64,5 +64,17 @@ Built phase-by-phase — see the plan for the full roadmap.
   email verification, OTP password reset, JWT access + rotating refresh
   tokens (httpOnly cookies), account lockout after 5 failed attempts, admin
   RBAC via `src/proxy.ts`, admin-only seed script (`npm run db:seed`).
+- **Phase 2 (Product Catalog & Categories)** — done. Admin category/product
+  CRUD with auto-generated SKUs and real Cloudinary image upload; public
+  `/shop` (filter/sort/search/pagination) and `/product/[id]`; homepage
+  wired to live categories/products. Seeded with 14 categories and 28
+  products from the blueprint's product list.
+- **Phase 3 (Dynamic Customization Engine)** — done. Admin form builder on
+  the product edit page (9 field types, reorderable, per-field required/
+  min-max/dropdown-options). Customer-facing `/product/[id]/customize`
+  (login required) renders that form with real-time validation, a photo
+  uploader bound to the product's min/max photo settings, and optional
+  reference-design uploads — submissions are saved as `CustomizationRequest`
+  rows. Not yet linked to cart/checkout (Phase 4).
 
-Connected to a live Neon database (see `.env`).
+Connected to a live Neon database, Cloudinary, and Brevo (see `.env`).
