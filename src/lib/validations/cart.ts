@@ -17,4 +17,19 @@ export const applyCouponSchema = z.object({
 
 export const checkoutSchema = z.object({
   addressId: z.string().trim().min(1, "Select a delivery address"),
+  paymentMethod: z.enum(["ONLINE", "COD"]).optional().default("ONLINE"),
+  giftMessage: z.string().trim().max(300, "Keep the gift message under 300 characters").optional(),
+  scheduledDeliveryDate: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || !Number.isNaN(Date.parse(value)), "Enter a valid date")
+    .refine((value) => {
+      if (!value) return true;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return new Date(value) >= today;
+    }, "Delivery date can't be in the past"),
+  isRushOrder: z.boolean().optional().default(false),
+  giftWrap: z.boolean().optional().default(false),
 });

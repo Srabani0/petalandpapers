@@ -88,4 +88,38 @@ export async function getCategoryBySlug(slug: string) {
   return prisma.category.findUnique({ where: { slug } });
 }
 
+/** Real bouquet photos for the homepage hero showcase — falls back to any recent product photo if fewer than 4 bouquets have images yet. */
+export async function getHeroShowcaseImages(limit = 4) {
+  const bouquetImages = await prisma.productImage.findMany({
+    where: {
+      isPrimary: true,
+      product: {
+        status: { not: "ARCHIVED" },
+        category: { name: { contains: "Bouquet", mode: "insensitive" } },
+      },
+    },
+    take: limit,
+    select: { url: true, altText: true, product: { select: { name: true } } },
+  });
+
+  if (bouquetImages.length >= limit) return bouquetImages;
+
+  const fallback = await prisma.productImage.findMany({
+    where: { isPrimary: true, product: { status: { not: "ARCHIVED" } } },
+    orderBy: { product: { createdAt: "desc" } },
+    take: limit,
+    select: { url: true, altText: true, product: { select: { name: true } } },
+  });
+
+  const seen = new Set(bouquetImages.map((img) => img.url));
+  const merged = [...bouquetImages];
+  for (const img of fallback) {
+    if (merged.length >= limit) break;
+    if (seen.has(img.url)) continue;
+    merged.push(img);
+  }
+
+  return merged;
+}
+
 export { slugify } from "@/lib/slug";

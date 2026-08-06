@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { ComingSoon } from "@/components/ui/ComingSoon";
 import { CartItemRow, type CartItemView } from "@/components/cart/CartItemRow";
 import { OrderSummary, type CartTotals } from "@/components/cart/OrderSummary";
+import { FreeShippingProgress } from "@/components/cart/FreeShippingProgress";
 import { toCartItemView, type RawCartItem } from "@/lib/cart-view";
 
 interface CartApiResponse {
@@ -114,62 +115,65 @@ export function CartView({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-      <div className="rounded-xl border border-border bg-paper p-5 sm:p-6">
-        {items.map((item) => (
-          <CartItemRow
-            key={item.id}
-            item={item}
-            busy={busyId === item.id}
-            onQuantityChange={(quantity) => handleQuantityChange(item.id, quantity)}
-            onRemove={() => handleRemove(item.id)}
-          />
-        ))}
-      </div>
+    <div className="flex flex-col gap-4">
+      <FreeShippingProgress totals={totals} />
+      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+        <div className="rounded-xl border border-border bg-paper p-5 sm:p-6">
+          {items.map((item) => (
+            <CartItemRow
+              key={item.id}
+              item={item}
+              busy={busyId === item.id}
+              onQuantityChange={(quantity) => handleQuantityChange(item.id, quantity)}
+              onRemove={() => handleRemove(item.id)}
+            />
+          ))}
+        </div>
 
-      <div className="flex flex-col gap-4">
-        <form onSubmit={handleApplyCoupon} className="rounded-xl border border-border bg-paper p-5">
-          <label className="text-sm font-medium text-navy" htmlFor="coupon">
-            Have a coupon?
-          </label>
-          {couponCode ? (
-            <div className="mt-2 flex items-center justify-between rounded-md bg-sage/10 px-3 py-2 text-sm text-sage-dark">
-              <span className="inline-flex items-center gap-1.5">
-                <Tag className="h-3.5 w-3.5" />
-                {couponCode}
-              </span>
-              <button
-                type="button"
-                onClick={handleRemoveCoupon}
-                disabled={couponBusy}
-                aria-label="Remove coupon"
-                className="text-sage-dark hover:opacity-70 disabled:opacity-50"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="mt-2 flex gap-2">
-              <Input
-                id="coupon"
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                placeholder="CODE"
-                className="flex-1"
-              />
-              <Button type="submit" variant="outline" disabled={couponBusy}>
-                Apply
-              </Button>
-            </div>
-          )}
-          {couponError ? <p className="mt-1.5 text-sm text-error">{couponError}</p> : null}
-        </form>
+        <div className="flex flex-col gap-4">
+          <form onSubmit={handleApplyCoupon} className="rounded-xl border border-border bg-paper p-5">
+            <label className="text-sm font-medium text-navy" htmlFor="coupon">
+              Have a coupon?
+            </label>
+            {couponCode ? (
+              <div className="mt-2 flex items-center justify-between rounded-md bg-sage/10 px-3 py-2 text-sm text-sage-dark">
+                <span className="inline-flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  {couponCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  disabled={couponBusy}
+                  aria-label="Remove coupon"
+                  className="text-sage-dark hover:opacity-70 disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2 flex gap-2">
+                <Input
+                  id="coupon"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  placeholder="CODE"
+                  className="flex-1"
+                />
+                <Button type="submit" variant="outline" disabled={couponBusy}>
+                  Apply
+                </Button>
+              </div>
+            )}
+            {couponError ? <p className="mt-1.5 text-sm text-error">{couponError}</p> : null}
+          </form>
 
-        <OrderSummary totals={totals} couponCode={couponCode} />
+          <OrderSummary totals={totals} couponCode={couponCode} />
 
-        <Button size="lg" className="w-full" onClick={() => router.push("/checkout")}>
-          Proceed to Checkout
-        </Button>
+          <Button size="lg" className="w-full" onClick={() => router.push("/checkout")}>
+            Proceed to Checkout
+          </Button>
+        </div>
       </div>
     </div>
   );

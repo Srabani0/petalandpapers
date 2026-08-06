@@ -11,9 +11,11 @@ export interface CartTotals {
 export function OrderSummary({
   totals,
   couponCode,
+  extraRows,
 }: {
   totals: CartTotals;
   couponCode?: string | null;
+  extraRows?: { label: string; value: number }[];
 }) {
   return (
     <div className="rounded-xl border border-border bg-paper p-5">
@@ -27,6 +29,7 @@ export function OrderSummary({
         {totals.couponDiscount > 0 && (
           <Row label={couponCode ? `Coupon (${couponCode})` : "Coupon"} value={-totals.couponDiscount} tone="sage" />
         )}
+        {extraRows?.map((row) => <Row key={row.label} label={row.label} value={row.value} />)}
         <Row
           label="Delivery"
           value={totals.deliveryCharge}

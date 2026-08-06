@@ -10,7 +10,7 @@ const CONTACT_DETAILS = [
   {
     icon: Mail,
     title: "Email Us",
-    detail: "hello@petalandpapers.com",
+    detail: "srabaninahak664@gmail.com",
   },
   {
     icon: Clock,
@@ -49,8 +49,8 @@ export default function ContactPage() {
         <p className="mx-auto mt-10 max-w-md text-center text-sm text-muted">
           A contact form is on its way — for now, the fastest way to reach us is by
           email at{" "}
-          <a href="mailto:hello@petalandpapers.com" className="text-gold-dark underline underline-offset-4">
-            hello@petalandpapers.com
+          <a href="mailto:srabaninahak664@gmail.com" className="text-gold-dark underline underline-offset-4">
+            srabaninahak664@gmail.com
           </a>
           .
         </p>

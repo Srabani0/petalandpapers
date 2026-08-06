@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Gift, Zap, CalendarHeart, MessageSquareHeart } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/Badge";
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
 import { CustomizationReviewPanel } from "@/components/admin/CustomizationReviewPanel";
-import { ORDER_STATUS_LABEL, ORDER_STATUS_BADGE_VARIANT, getAvailableTransitions } from "@/lib/order-status";
+import { ORDER_STATUS_LABEL, ORDER_STATUS_BADGE_VARIANT, getAllStatusOptions } from "@/lib/order-status";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -45,7 +46,8 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   if (!order) notFound();
 
   const address = order.addressSnapshot as unknown as AddressSnapshot;
-  const transitions = getAvailableTransitions(order.status);
+  const isCustomized = order.customizationRequests.length > 0;
+  const statusOptions = getAllStatusOptions(isCustomized);
 
   return (
     <div>
@@ -57,9 +59,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             {order.customer.email})
           </p>
         </div>
-        <Badge variant={ORDER_STATUS_BADGE_VARIANT[order.status]}>
-          {ORDER_STATUS_LABEL[order.status]}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {order.isRushOrder ? <Badge variant="warning">Rush</Badge> : null}
+          {order.giftWrap ? <Badge variant="gold">Gift Wrapped</Badge> : null}
+          <Badge variant={ORDER_STATUS_BADGE_VARIANT[order.status]}>
+            {ORDER_STATUS_LABEL[order.status]}
+          </Badge>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -91,6 +97,8 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               {Number(order.couponDiscount) > 0 && (
                 <Row label={`Coupon${order.coupon ? ` (${order.coupon.code})` : ""}`} value={-Number(order.couponDiscount)} />
               )}
+              {order.isRushOrder && <Row label="Rush Order Fee" value={Number(order.rushFee)} />}
+              {order.giftWrap && <Row label="Gift Wrap" value={Number(order.giftWrapFee)} />}
               <Row label="Delivery" value={Number(order.deliveryCharge)} />
               <div className="mt-1 flex items-baseline justify-between border-t border-border pt-2 font-display text-navy">
                 <span>Total</span>
@@ -98,6 +106,40 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </div>
             </div>
           </div>
+
+          {order.giftMessage || order.scheduledDeliveryDate || order.isRushOrder || order.giftWrap ? (
+            <div className="rounded-xl border border-border bg-paper p-5">
+              <h2 className="font-display text-lg text-navy">Gift &amp; Delivery Details</h2>
+              <div className="mt-3 flex flex-col gap-2 text-sm">
+                {order.isRushOrder ? (
+                  <p className="flex items-center gap-2 text-navy">
+                    <Zap className="h-4 w-4 text-gold-dark" /> Rush order — priority handling
+                  </p>
+                ) : null}
+                {order.giftWrap ? (
+                  <p className="flex items-center gap-2 text-navy">
+                    <Gift className="h-4 w-4 text-gold-dark" /> Gift wrapped
+                  </p>
+                ) : null}
+                {order.scheduledDeliveryDate ? (
+                  <p className="flex items-center gap-2 text-navy">
+                    <CalendarHeart className="h-4 w-4 text-gold-dark" /> Scheduled for{" "}
+                    {order.scheduledDeliveryDate.toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                ) : null}
+                {order.giftMessage ? (
+                  <p className="flex items-start gap-2 text-navy">
+                    <MessageSquareHeart className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" />
+                    <span className="italic text-muted">&ldquo;{order.giftMessage}&rdquo;</span>
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-xl border border-border bg-paper p-5">
             <h2 className="font-display text-lg text-navy">Delivery Address</h2>
@@ -142,7 +184,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             trackingNumber={order.trackingNumber}
             courierName={order.courierName}
             adminNotes={order.adminNotes}
-            availableTransitions={transitions}
+            statusOptions={statusOptions}
           />
 
           <div className="rounded-xl border border-border bg-paper p-5">

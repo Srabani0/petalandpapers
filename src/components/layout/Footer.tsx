@@ -10,6 +10,13 @@ const QUICK_LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
+const POLICY_LINKS = [
+  { href: "/privacy-policy", label: "Privacy Policy" },
+  { href: "/terms-conditions", label: "Terms & Conditions" },
+  { href: "/refund-policy", label: "Refund & Cancellation" },
+  { href: "/shipping-policy", label: "Shipping Policy" },
+];
+
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-border bg-cream-dark">
@@ -52,7 +59,9 @@ export function Footer() {
           <ul className="mt-4 space-y-3 text-sm text-muted">
             <li className="flex items-start gap-2">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" />
-              <span>hello@petalandpapers.com</span>
+              <a href="mailto:srabaninahak664@gmail.com" className="hover:text-gold-dark">
+                srabaninahak664@gmail.com
+              </a>
             </li>
             <li className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" />
@@ -63,9 +72,19 @@ export function Footer() {
       </Container>
 
       <div className="border-t border-border">
-        <Container className="flex flex-col items-center justify-between gap-2 py-5 text-xs text-muted sm:flex-row">
+        <Container className="flex flex-col items-center justify-between gap-3 py-5 text-xs text-muted sm:flex-row">
           <p>&copy; {new Date().getFullYear()} Petal &amp; Papers. All rights reserved.</p>
-          <p>Every piece made by hand, with love.</p>
+          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+            {POLICY_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="transition-colors hover:text-gold-dark"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </Container>
       </div>
     </footer>

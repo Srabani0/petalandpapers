@@ -13,17 +13,17 @@ export function OrderStatusControl({
   trackingNumber,
   courierName,
   adminNotes,
-  availableTransitions,
+  statusOptions,
 }: {
   orderId: string;
   currentStatus: OrderStatus;
   trackingNumber: string | null;
   courierName: string | null;
   adminNotes: string | null;
-  availableTransitions: OrderStatus[];
+  statusOptions: OrderStatus[];
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState<OrderStatus | "">(availableTransitions[0] ?? "");
+  const [status, setStatus] = useState<OrderStatus>(currentStatus);
   const [tracking, setTracking] = useState(trackingNumber ?? "");
   const [courier, setCourier] = useState(courierName ?? "");
   const [notes, setNotes] = useState(adminNotes ?? "");
@@ -32,7 +32,6 @@ export function OrderStatusControl({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!status) return;
     setSaving(true);
     setError(null);
     try {
@@ -64,48 +63,45 @@ export function OrderStatusControl({
       <h2 className="font-display text-lg text-navy">Order Status</h2>
       <p className="mt-1 text-sm text-muted">Currently: {ORDER_STATUS_LABEL[currentStatus]}</p>
 
-      {availableTransitions.length === 0 ? (
-        <p className="mt-4 text-sm text-muted">This order is in a final state.</p>
-      ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          <div>
-            <Label htmlFor="status">Move to</Label>
-            <select
-              id="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as OrderStatus)}
-              className="w-full rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm text-ink focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
-            >
-              {availableTransitions.map((s) => (
-                <option key={s} value={s}>
-                  {ORDER_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <Label htmlFor="courier">Courier</Label>
-            <Input id="courier" value={courier} onChange={(e) => setCourier(e.target.value)} placeholder="e.g. BlueDart" />
-          </div>
-
-          <div>
-            <Label htmlFor="tracking">Tracking Number</Label>
-            <Input id="tracking" value={tracking} onChange={(e) => setTracking(e.target.value)} />
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Internal Notes</Label>
-            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Visible to admins only" />
-          </div>
-
-          <FieldError>{error ?? undefined}</FieldError>
-
-          <Button type="submit" disabled={saving || !status}>
-            {saving ? "Updating…" : "Update Status"}
-          </Button>
+      <div className="mt-4 flex flex-col gap-4">
+        <div>
+          <Label htmlFor="status">Set status to</Label>
+          <select
+            id="status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as OrderStatus)}
+            className="w-full rounded-md border border-border bg-paper px-3.5 py-2.5 text-sm text-ink focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+          >
+            {statusOptions.map((s) => (
+              <option key={s} value={s}>
+                {ORDER_STATUS_LABEL[s]}
+                {s === currentStatus ? " (current)" : ""}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        <div>
+          <Label htmlFor="courier">Courier</Label>
+          <Input id="courier" value={courier} onChange={(e) => setCourier(e.target.value)} placeholder="e.g. BlueDart" />
+        </div>
+
+        <div>
+          <Label htmlFor="tracking">Tracking Number</Label>
+          <Input id="tracking" value={tracking} onChange={(e) => setTracking(e.target.value)} />
+        </div>
+
+        <div>
+          <Label htmlFor="notes">Internal Notes</Label>
+          <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Visible to admins only" />
+        </div>
+
+        <FieldError>{error ?? undefined}</FieldError>
+
+        <Button type="submit" disabled={saving}>
+          {saving ? "Updating…" : "Update Status"}
+        </Button>
+      </div>
     </form>
   );
 }

@@ -1,7 +1,7 @@
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getOrCreateCart, computeCartTotals } from "@/lib/cart";
-import { getAvailableTransitions, ORDER_STATUS_LABEL } from "@/lib/order-status";
+import { getOrCreateCart, computeCartTotals, RUSH_ORDER_FEE, GIFT_WRAP_FEE } from "@/lib/cart";
+import { ORDER_STATUS_LABEL } from "@/lib/order-status";
 import { sendEmail } from "@/lib/email/brevo";
 import { orderStatusEmail } from "@/lib/email/templates";
 
@@ -18,10 +18,18 @@ export async function generateOrderNumber() {
   return `PP-${year}-${(count + 1).toString().padStart(5, "0")}`;
 }
 
+export interface CheckoutExtras {
+  giftMessage?: string;
+  scheduledDeliveryDate?: string;
+  isRushOrder?: boolean;
+  giftWrap?: boolean;
+}
+
 /** Creates a PENDING order + payment record from the customer's current cart. */
 export async function createPendingOrder(
   userId: string,
   addressId: string,
+  extras: CheckoutExtras = {},
 ): Promise<{ error: string } | { order: OrderWithPaymentAndItems }> {
   const address = await prisma.address.findUnique({ where: { id: addressId } });
   if (!address || address.userId !== userId) {
@@ -39,6 +47,9 @@ export async function createPendingOrder(
 
   const totals = computeCartTotals(cart);
   const orderNumber = await generateOrderNumber();
+  const rushFee = extras.isRushOrder ? RUSH_ORDER_FEE : 0;
+  const giftWrapFee = extras.giftWrap ? GIFT_WRAP_FEE : 0;
+  const totalAmount = totals.totalAmount + rushFee + giftWrapFee;
 
   const order = await prisma.order.create({
     data: {
@@ -60,7 +71,15 @@ export async function createPendingOrder(
       discountAmount: totals.discountAmount,
       couponDiscount: totals.couponDiscount,
       deliveryCharge: totals.deliveryCharge,
-      totalAmount: totals.totalAmount,
+      totalAmount,
+      giftMessage: extras.giftMessage || null,
+      scheduledDeliveryDate: extras.scheduledDeliveryDate
+        ? new Date(extras.scheduledDeliveryDate)
+        : null,
+      isRushOrder: Boolean(extras.isRushOrder),
+      rushFee,
+      giftWrap: Boolean(extras.giftWrap),
+      giftWrapFee,
       status: "PENDING",
       items: {
         create: cart.items.map((item) => ({
@@ -79,7 +98,7 @@ export async function createPendingOrder(
       },
       payment: {
         create: {
-          amount: totals.totalAmount,
+          amount: totalAmount,
           status: "PENDING",
         },
       },
@@ -88,6 +107,68 @@ export async function createPendingOrder(
   });
 
   return { order };
+}
+
+/**
+ * Marks an order CONFIRMED: deducts stock, logs inventory movement, links
+ * approved customization requests, credits coupon usage, and clears the
+ * customer's cart. Shared by both the online-payment and cash-on-delivery
+ * confirmation paths.
+ */
+async function finalizeConfirmedOrder(tx: Prisma.TransactionClient, order: OrderWithItems) {
+  const confirmed = await tx.order.update({
+    where: { id: order.id },
+    data: { status: "CONFIRMED" },
+    include: { items: true },
+  });
+
+  for (const item of confirmed.items) {
+    const product = await tx.product.findUnique({ where: { id: item.productId } });
+    if (!product) continue;
+
+    const quantityAfter = Math.max(0, product.stock - item.quantity);
+    await tx.product.update({
+      where: { id: item.productId },
+      data: {
+        stock: quantityAfter,
+        status: quantityAfter === 0 ? "OUT_OF_STOCK" : product.status,
+      },
+    });
+    await tx.inventoryLog.create({
+      data: {
+        productId: item.productId,
+        changeType: "ORDER_DEDUCTION",
+        quantityBefore: product.stock,
+        quantityChange: -item.quantity,
+        quantityAfter,
+        reason: `Order ${confirmed.orderNumber}`,
+        orderId: confirmed.id,
+        performedBy: confirmed.customerId,
+      },
+    });
+
+    if (item.customizationId) {
+      await tx.customizationRequest.update({
+        where: { id: item.customizationId },
+        data: { orderId: confirmed.id, status: "RECEIVED" },
+      });
+    }
+  }
+
+  if (confirmed.couponId) {
+    await tx.coupon.update({
+      where: { id: confirmed.couponId },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
+
+  const cart = await tx.cart.findUnique({ where: { userId: confirmed.customerId } });
+  if (cart) {
+    await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+    await tx.cart.update({ where: { id: cart.id }, data: { couponId: null } });
+  }
+
+  return confirmed;
 }
 
 /**
@@ -119,70 +200,46 @@ export async function confirmOrderPayment(
       },
     });
 
-    const confirmed = await tx.order.update({
-      where: { id: order.id },
-      data: { status: "CONFIRMED" },
-      include: { items: true },
-    });
-
-    for (const item of confirmed.items) {
-      const product = await tx.product.findUnique({ where: { id: item.productId } });
-      if (!product) continue;
-
-      const quantityAfter = Math.max(0, product.stock - item.quantity);
-      await tx.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: quantityAfter,
-          status: quantityAfter === 0 ? "OUT_OF_STOCK" : product.status,
-        },
-      });
-      await tx.inventoryLog.create({
-        data: {
-          productId: item.productId,
-          changeType: "ORDER_DEDUCTION",
-          quantityBefore: product.stock,
-          quantityChange: -item.quantity,
-          quantityAfter,
-          reason: `Order ${confirmed.orderNumber}`,
-          orderId: confirmed.id,
-          performedBy: confirmed.customerId,
-        },
-      });
-
-      if (item.customizationId) {
-        await tx.customizationRequest.update({
-          where: { id: item.customizationId },
-          data: { orderId: confirmed.id, status: "RECEIVED" },
-        });
-      }
-    }
-
-    if (confirmed.couponId) {
-      await tx.coupon.update({
-        where: { id: confirmed.couponId },
-        data: { usedCount: { increment: 1 } },
-      });
-    }
-
-    const cart = await tx.cart.findUnique({ where: { userId: confirmed.customerId } });
-    if (cart) {
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-      await tx.cart.update({ where: { id: cart.id }, data: { couponId: null } });
-    }
-
-    return confirmed;
+    return finalizeConfirmedOrder(tx, order);
   });
 
   return { order: updated };
 }
 
 /**
- * Admin-driven status change (FR: 11-state order status machine). Restocks
- * items on CANCELLED/REFUNDED, but only if stock was actually deducted for
- * this order (i.e. it had already moved past PENDING — see
- * `confirmOrderPayment`), so an abandoned/unpaid order can't double-credit
- * inventory it never took.
+ * Cash on delivery: the order is confirmed immediately — there's no payment
+ * gateway step to wait on. The Payment row is tagged `method: COD` and stays
+ * `PENDING` (cash hasn't actually changed hands yet); an admin marks it
+ * SUCCESS once collected at delivery.
+ */
+export async function createCodOrder(
+  userId: string,
+  addressId: string,
+  extras: CheckoutExtras = {},
+): Promise<{ error: string } | { order: OrderWithItems }> {
+  const pending = await createPendingOrder(userId, addressId, extras);
+  if ("error" in pending) return pending;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.payment.update({
+      where: { id: pending.order.payment!.id },
+      data: { method: "COD" },
+    });
+
+    return finalizeConfirmedOrder(tx, pending.order);
+  });
+
+  return { order: updated };
+}
+
+/**
+ * Admin-driven status change. Admins can jump directly to any status (not
+ * just the next/previous step) — the order detail page exposes the full
+ * status list. Restocks items when an order newly enters CANCELLED/REFUNDED,
+ * but only if stock was actually deducted for this order (i.e. it had
+ * already moved past PENDING — see `confirmOrderPayment`) and it wasn't
+ * already in a terminal state, so re-saving the same status (or an
+ * already-cancelled/refunded order) can't double-credit inventory.
  */
 export async function updateOrderStatus(
   orderId: string,
@@ -195,15 +252,12 @@ export async function updateOrderStatus(
   });
   if (!order) return { error: "Order not found." as const };
 
-  const allowed = getAvailableTransitions(order.status);
-  if (!allowed.includes(input.status)) {
-    return {
-      error: `Can't move from "${ORDER_STATUS_LABEL[order.status]}" to "${ORDER_STATUS_LABEL[input.status]}".`,
-    };
-  }
-
   const shouldRestock =
-    (input.status === "CANCELLED" || input.status === "REFUNDED") && order.status !== "PENDING";
+    input.status !== order.status &&
+    (input.status === "CANCELLED" || input.status === "REFUNDED") &&
+    order.status !== "PENDING" &&
+    order.status !== "CANCELLED" &&
+    order.status !== "REFUNDED";
 
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.order.update({

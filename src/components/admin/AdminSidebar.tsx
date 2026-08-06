@@ -3,15 +3,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Tags, Package, ClipboardList, Ticket, LogOut } from "lucide-react";
+import { LayoutDashboard, Tags, Package, ClipboardList, Ticket, Star, Users, Boxes, LogOut, Image as ImageIcon, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/hero", label: "Hero Section", icon: ImageIcon },
+  { href: "/admin/founder-story", label: "Founder Story", icon: HeartHandshake },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+  { href: "/admin/customers", label: "Customers", icon: Users },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/admin/coupons", label: "Coupons & Offers", icon: Ticket },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
 ];
 
 export function AdminSidebar({ adminName }: { adminName: string }) {

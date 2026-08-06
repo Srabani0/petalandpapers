@@ -86,6 +86,7 @@ enum PaymentMethod {
   CARD
   NET_BANKING
   WALLET
+  COD
 }
 
 enum CouponType {
@@ -124,6 +125,7 @@ model User {
   isActive           Boolean   @default(true)
   loginAttempts      Int       @default(0)
   lockedUntil        DateTime?
+  adminNotes         String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -386,6 +388,13 @@ model Order {
   trackingNumber   String?
   courierName      String?
   adminNotes       String?
+  // Added for premium checkout options — gifting + priority handling.
+  giftMessage           String?
+  scheduledDeliveryDate DateTime?
+  isRushOrder           Boolean     @default(false)
+  rushFee               Decimal     @default(0) @db.Decimal(10, 2)
+  giftWrap              Boolean     @default(false)
+  giftWrapFee           Decimal     @default(0) @db.Decimal(10, 2)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
@@ -513,4 +522,54 @@ model InventoryLog {
 
   @@index([productId])
   @@map("inventory_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Hero Content (homepage) — singleton row, admin-editable
+// ─────────────────────────────────────────────────────────────────────────
+
+model HeroContent {
+  id                 String   @id @default(uuid())
+  eyebrowText        String   @default("Handcrafted · Personalized · Made with Love")
+  headingLine        String   @default("Handmade Blooms,")
+  headingScript      String   @default("Forever Yours")
+  description        String   @default("Every bouquet is crocheted, arranged, and wrapped by hand — soft, everlasting blooms that never wilt, made with the same care as a gift from someone who truly knows you.")
+  primaryCtaLabel    String   @default("Shop Collection")
+  primaryCtaHref     String   @default("/shop")
+  secondaryCtaLabel  String   @default("Customize Bouquet")
+  secondaryCtaHref   String   @default("/shop?customizable=true")
+  updatedAt          DateTime @updatedAt
+
+  images HeroImage[]
+
+  @@map("hero_content")
+}
+
+model HeroImage {
+  id            String @id @default(uuid())
+  heroContentId String
+  cloudinaryId  String
+  url           String
+  altText       String?
+  sortOrder     Int    @default(0)
+
+  heroContent HeroContent @relation(fields: [heroContentId], references: [id], onDelete: Cascade)
+
+  @@index([heroContentId])
+  @@map("hero_images")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Founder Story (homepage) — singleton row, admin-editable
+// ─────────────────────────────────────────────────────────────────────────
+
+model FounderStory {
+  id          String   @id @default(uuid())
+  photoUrl    String?
+  heading     String   @default("Thank You, Petal & Papers Family")
+  message     String   @default("We started this journey with a simple mission: to bring you the finest handmade gifts with exceptional care. Every piece we offer is carefully crafted by hand, with lots of love.\n\nThank you for being part of our story.")
+  founderName String   @default("Founder")
+  updatedAt   DateTime @updatedAt
+
+  @@map("founder_story")
 }

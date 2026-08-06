@@ -15,7 +15,7 @@ interface SendEmailParams {
  */
 export async function sendEmail({ to, toName, subject, html }: SendEmailParams) {
   const apiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || "hello@petalandpapers.com";
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "srabaninahak664@gmail.com";
   const senderName = process.env.BREVO_SENDER_NAME || "Petal & Papers";
 
   if (process.env.NODE_ENV === "development") {

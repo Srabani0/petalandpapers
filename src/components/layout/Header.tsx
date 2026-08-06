@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Search, Heart, ShoppingBag, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { PromoStrip, type Promotion } from "@/components/layout/PromoStrip";
 
 type HeaderUser = { name: string; role: "CUSTOMER" | "ADMIN" } | null;
 
@@ -21,10 +22,12 @@ export function Header({
   user = null,
   cartCount = 0,
   wishlistCount = 0,
+  promotions = [],
 }: {
   user?: HeaderUser;
   cartCount?: number;
   wishlistCount?: number;
+  promotions?: Promotion[];
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
@@ -32,9 +35,7 @@ export function Header({
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-cream/95 backdrop-blur supports-backdrop-blur:bg-cream/80">
       <div className="hidden bg-navy text-cream sm:block">
-        <p className="mx-auto max-w-7xl px-4 py-2 text-center text-xs tracking-wide sm:px-6 lg:px-8">
-          Handcrafted gifts, made from the heart &middot; Free shipping on orders above &#8377;999
-        </p>
+        <PromoStrip promotions={promotions} />
       </div>
 
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">

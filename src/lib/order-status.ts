@@ -1,7 +1,12 @@
 import type { OrderStatus } from "@prisma/client";
 
-/** The happy-path sequence admin advances/reverts an order through one step at a time. */
-export const ORDER_FLOW: OrderStatus[] = [
+/**
+ * The happy-path sequence admin advances/reverts an order through one step at
+ * a time. Customized orders go through the design/approval loop; standard
+ * (non-customizable) orders skip straight from CONFIRMED to PRODUCTION —
+ * there's no design step to show a customer who didn't order anything custom.
+ */
+export const CUSTOM_ORDER_FLOW: OrderStatus[] = [
   "PENDING",
   "CONFIRMED",
   "CUSTOMIZATION_RECEIVED",
@@ -14,6 +19,50 @@ export const ORDER_FLOW: OrderStatus[] = [
   "SHIPPED",
   "DELIVERED",
 ];
+
+export const STANDARD_ORDER_FLOW: OrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "PRODUCTION",
+  "READY",
+  "PACKED",
+  "SHIPPED",
+  "DELIVERED",
+];
+
+export function getOrderFlow(isCustomized: boolean): OrderStatus[] {
+  return isCustomized ? CUSTOM_ORDER_FLOW : STANDARD_ORDER_FLOW;
+}
+
+/**
+ * Every status an admin can jump an order to directly, in display order.
+ * Unlike `getAvailableTransitions` (one step forward/back), this is the full
+ * list — admins are trusted to set any status directly, not just advance
+ * step-by-step.
+ */
+export function getAllStatusOptions(isCustomized: boolean): OrderStatus[] {
+  return [...getOrderFlow(isCustomized), "CANCELLED", "REFUNDED"];
+}
+
+/**
+ * Resolves which flow an order's current status actually lives in. Normally
+ * that's just `getOrderFlow(isCustomized)`, but an order can be sitting in a
+ * customization-only status (e.g. DESIGNING) that predates this category
+ * split, or whose customization link was removed after the fact — in that
+ * case fall back to whichever flow actually contains the status, so the
+ * order never gets stranded with an empty transitions list.
+ */
+export function resolveOrderFlow(current: OrderStatus, isCustomized: boolean) {
+  const flow = getOrderFlow(isCustomized);
+  const index = flow.indexOf(current);
+  if (index !== -1) return { flow, index };
+
+  const otherFlow = getOrderFlow(!isCustomized);
+  const otherIndex = otherFlow.indexOf(current);
+  if (otherIndex !== -1) return { flow: otherFlow, index: otherIndex };
+
+  return { flow, index: -1 };
+}
 
 export type OrderStatusBadgeVariant = "neutral" | "gold" | "sage" | "success" | "error" | "warning";
 
@@ -48,28 +97,3 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   CANCELLED: "Cancelled",
   REFUNDED: "Refunded",
 };
-
-/**
- * Returns the statuses this order can legally move to next: one step forward
- * or back along ORDER_FLOW, plus CANCELLED/REFUNDED where they make sense.
- * Kept as a single-step machine (not free-form) per the SRS's "advance/revert"
- * model — CANCELLED and REFUNDED are the only exceptions, reachable early or
- * late respectively.
- */
-export function getAvailableTransitions(current: OrderStatus): OrderStatus[] {
-  const index = ORDER_FLOW.indexOf(current);
-  const transitions: OrderStatus[] = [];
-
-  if (index === -1) {
-    // CANCELLED or REFUNDED
-    if (current === "CANCELLED") transitions.push("REFUNDED");
-    return transitions;
-  }
-
-  if (index < ORDER_FLOW.length - 1) transitions.push(ORDER_FLOW[index + 1]);
-  if (index > 0) transitions.push(ORDER_FLOW[index - 1]);
-  if (current !== "DELIVERED") transitions.push("CANCELLED");
-  if (current === "DELIVERED") transitions.push("REFUNDED");
-
-  return transitions;
-}

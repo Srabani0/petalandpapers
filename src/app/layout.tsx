@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Playfair_Display, Inter, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { SiteChrome } from "@/components/layout/SiteChrome";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCartItemCount } from "@/lib/cart";
 import { getWishlistCount } from "@/lib/wishlist";
+import { getActivePromotions } from "@/lib/promotions";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -15,6 +16,12 @@ const playfair = Playfair_Display({
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+const dancingScript = Dancing_Script({
+  variable: "--font-cursive",
+  subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -35,11 +42,15 @@ export default async function RootLayout({
   const user = session ? { name: session.name, role: session.role } : null;
   const cartCount = session ? await getCartItemCount(session.sub) : 0;
   const wishlistCount = session ? await getWishlistCount(session.sub) : 0;
+  const promotions = await getActivePromotions();
 
   return (
-    <html lang="en" className={`${playfair.variable} ${inter.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${playfair.variable} ${inter.variable} ${dancingScript.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col bg-cream text-ink">
-        <SiteChrome user={user} cartCount={cartCount} wishlistCount={wishlistCount}>
+        <SiteChrome user={user} cartCount={cartCount} wishlistCount={wishlistCount} promotions={promotions}>
           {children}
         </SiteChrome>
       </body>

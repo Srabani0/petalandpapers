@@ -24,6 +24,12 @@
   --color-sage-light: #aab8a7;
   --color-sage-dark: #687665;
 
+  /* Pastel blush pink — reserved for the hero + other soft-luxury accent
+     moments (decorative florals, script accents), not the core UI palette. */
+  --color-blush: #f3d9de;
+  --color-blush-light: #faeaed;
+  --color-blush-dark: #c98fa0;
+
   --color-ink: #241f1a;
   --color-muted: #7a756c;
   --color-border: #e4dcc8;
@@ -34,6 +40,7 @@
 
   --font-display: var(--font-playfair), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-script: var(--font-cursive), cursive;
 }
 
 @theme inline {
@@ -53,6 +60,10 @@
   --color-sage-light: var(--color-sage-light);
   --color-sage-dark: var(--color-sage-dark);
 
+  --color-blush: var(--color-blush);
+  --color-blush-light: var(--color-blush-light);
+  --color-blush-dark: var(--color-blush-dark);
+
   --color-ink: var(--color-ink);
   --color-muted: var(--color-muted);
   --color-border: var(--color-border);
@@ -63,6 +74,7 @@
 
   --font-display: var(--font-display);
   --font-sans: var(--font-sans);
+  --font-script: var(--font-script);
 }
 
 body {
@@ -74,6 +86,24 @@ body {
 ::selection {
   background: var(--color-gold-light);
   color: var(--color-navy-dark);
+}
+
+/* Header promo strip — auto-scrolling ticker of live offers, pauses on hover */
+@keyframes pp-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.pp-marquee-track {
+  animation: pp-marquee 24s linear infinite;
+}
+
+.pp-marquee-track:hover {
+  animation-play-state: paused;
 }
 
 /* Subtle botanical-inspired divider, used between homepage sections */

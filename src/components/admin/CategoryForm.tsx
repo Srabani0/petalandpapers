@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Label, FieldError } from "@/components/ui/Input";
+import { SingleImageUpload } from "@/components/admin/SingleImageUpload";
 import { slugify } from "@/lib/slug";
 
 interface CategoryFormValues {
@@ -110,16 +111,12 @@ export function CategoryForm({ initial }: { initial?: CategoryFormValues }) {
         />
       </div>
 
-      <div>
-        <Label htmlFor="imageUrl">Banner Image URL</Label>
-        <Input
-          id="imageUrl"
-          type="url"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://..."
-        />
-      </div>
+      <SingleImageUpload
+        label="Category Photo"
+        value={imageUrl}
+        onChange={setImageUrl}
+        uploadEndpoint="/api/admin/categories/upload-image"
+      />
 
       <div className="flex items-center gap-6">
         <div>
