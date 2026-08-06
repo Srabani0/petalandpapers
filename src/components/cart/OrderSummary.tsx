@@ -1,4 +1,4 @@
-import { FREE_DELIVERY_THRESHOLD } from "@/lib/cart";
+import { FREE_DELIVERY_THRESHOLD } from "@/lib/cart-constants";
 
 export interface CartTotals {
   subtotal: number;

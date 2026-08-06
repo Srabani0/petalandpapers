@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import {
+  FREE_DELIVERY_THRESHOLD,
+  DELIVERY_CHARGE,
+  RUSH_ORDER_FEE,
+  GIFT_WRAP_FEE,
+} from "@/lib/cart-constants";
 
-export const FREE_DELIVERY_THRESHOLD = 999;
-export const DELIVERY_CHARGE = 99;
-export const RUSH_ORDER_FEE = 149;
-export const GIFT_WRAP_FEE = 49;
+export { FREE_DELIVERY_THRESHOLD, DELIVERY_CHARGE, RUSH_ORDER_FEE, GIFT_WRAP_FEE };
 
 const cartInclude = {
   items: {

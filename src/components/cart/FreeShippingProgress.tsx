@@ -1,5 +1,5 @@
 import { Truck, PartyPopper } from "lucide-react";
-import { FREE_DELIVERY_THRESHOLD } from "@/lib/cart";
+import { FREE_DELIVERY_THRESHOLD } from "@/lib/cart-constants";
 import type { CartTotals } from "@/components/cart/OrderSummary";
 
 export function FreeShippingProgress({ totals }: { totals: CartTotals }) {

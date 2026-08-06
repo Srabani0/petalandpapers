@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Gift, Zap, CalendarHeart } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { RUSH_ORDER_FEE, GIFT_WRAP_FEE } from "@/lib/cart";
+import { RUSH_ORDER_FEE, GIFT_WRAP_FEE } from "@/lib/cart-constants";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Textarea, FieldError, FieldHint } from "@/components/ui/Input";
 import { OrderSummary, type CartTotals } from "@/components/cart/OrderSummary";
