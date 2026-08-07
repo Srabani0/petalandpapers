@@ -3,6 +3,7 @@
 import { Upload, X } from "lucide-react";
 import { Input, Textarea, Label, FieldError } from "@/components/ui/Input";
 import type { CustomizationFieldLike } from "@/lib/customization";
+import { compressImage } from "@/lib/image-compress";
 
 type FieldValue = string | number | boolean | undefined;
 
@@ -176,7 +177,10 @@ export function DynamicField({
                 id={field.id}
                 type="file"
                 accept={field.fieldType === "IMAGE_UPLOAD" ? "image/*" : undefined}
-                onChange={(e) => onFileChange?.(e.target.files?.[0] ?? null)}
+                onChange={async (e) => {
+                  const picked = e.target.files?.[0] ?? null;
+                  onFileChange?.(picked ? await compressImage(picked) : null);
+                }}
                 className="hidden"
               />
             </label>

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Upload, X, Loader2 } from "lucide-react";
 import { Label, FieldError } from "@/components/ui/Input";
+import { compressImage } from "@/lib/image-compress";
 
 export function SingleImageUpload({
   label,
@@ -27,8 +28,9 @@ export function SingleImageUpload({
     setUploading(true);
 
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const res = await fetch(uploadEndpoint, { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {

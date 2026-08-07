@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Upload, Trash2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { compressImage } from "@/lib/image-compress";
 
 interface ProductImageItem {
   id: string;
@@ -32,8 +33,9 @@ export function ProductImageManager({
     setUploading(true);
 
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const res = await fetch(`/api/admin/products/${productId}/images`, {
         method: "POST",
         body: formData,

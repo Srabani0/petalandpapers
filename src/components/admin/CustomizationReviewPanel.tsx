@@ -7,6 +7,7 @@ import type { CustomizationStatus } from "@prisma/client";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Label, Textarea, FieldError } from "@/components/ui/Input";
+import { compressImage } from "@/lib/image-compress";
 
 const STATUS_LABEL: Record<CustomizationStatus, string> = {
   PENDING: "Pending",
@@ -57,8 +58,9 @@ export function CustomizationReviewPanel({
     setUploading(true);
     setUploadError(null);
     try {
+      const compressed = await compressImage(file);
       const body = new FormData();
-      body.set("preview", file);
+      body.set("preview", compressed);
       const res = await fetch(`/api/admin/customizations/${id}/preview`, { method: "POST", body });
       const data = await res.json();
       if (!res.ok) {

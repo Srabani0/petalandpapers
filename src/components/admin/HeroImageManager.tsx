@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Upload, Trash2, Loader2 } from "lucide-react";
+import { compressImage } from "@/lib/image-compress";
 
 interface HeroImageItem {
   id: string;
@@ -30,8 +31,9 @@ export function HeroImageManager({
     setUploading(true);
 
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const res = await fetch("/api/admin/hero/images", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {

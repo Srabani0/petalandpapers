@@ -29,7 +29,7 @@ export default async function AdminOrdersPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl text-navy">Orders</h1>
           <p className="mt-1 text-sm text-muted">Track and manage customer orders.</p>
@@ -43,6 +43,7 @@ export default async function AdminOrdersPage({
         {orders.length === 0 ? (
           <div className="p-12 text-center text-muted">No orders yet.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-cream-dark text-left text-xs tracking-wide text-muted uppercase">
               <tr>
@@ -83,6 +84,7 @@ export default async function AdminOrdersPage({
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

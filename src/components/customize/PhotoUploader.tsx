@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { Upload, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Upload, X } from "lucide-react";
+import { compressImages } from "@/lib/image-compress";
 
 export function PhotoUploader({
   files,
@@ -13,16 +14,25 @@ export function PhotoUploader({
   max: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [processing, setProcessing] = useState(false);
   const previewUrls = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
 
   useEffect(() => {
     return () => previewUrls.forEach((url) => URL.revokeObjectURL(url));
   }, [previewUrls]);
 
-  function handleAdd(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAdd(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
-    onChange([...files, ...picked].slice(0, max));
     if (inputRef.current) inputRef.current.value = "";
+    if (picked.length === 0) return;
+
+    setProcessing(true);
+    try {
+      const compressed = await compressImages(picked);
+      onChange([...files, ...compressed].slice(0, max));
+    } finally {
+      setProcessing(false);
+    }
   }
 
   function handleRemove(index: number) {
@@ -52,15 +62,21 @@ export function PhotoUploader({
       ))}
 
       {files.length < max && (
-        <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted hover:border-gold/40 hover:text-gold-dark">
-          <Upload className="h-4 w-4" />
-          <span className="text-[11px]">Add</span>
+        <label
+          className={
+            "flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted hover:border-gold/40 hover:text-gold-dark" +
+            (processing ? " pointer-events-none opacity-60" : "")
+          }
+        >
+          {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          <span className="text-[11px]">{processing ? "Adding…" : "Add"}</span>
           <input
             ref={inputRef}
             type="file"
             accept="image/*"
             multiple
             onChange={handleAdd}
+            disabled={processing}
             className="hidden"
           />
         </label>

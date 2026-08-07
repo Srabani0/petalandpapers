@@ -48,6 +48,7 @@ export function CategoryTable({ categories }: { categories: CategoryRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-paper">
       {error ? <p className="border-b border-border bg-error/10 px-5 py-2 text-sm text-error">{error}</p> : null}
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b border-border bg-cream-dark text-left text-xs tracking-wide text-muted uppercase">
           <tr>
@@ -93,6 +94,7 @@ export function CategoryTable({ categories }: { categories: CategoryRow[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
