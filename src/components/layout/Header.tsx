@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { Menu, X, Search, Heart, ShoppingBag, Package } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, Search, Heart, ShoppingBag, Package, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { PromoStrip, type Promotion } from "@/components/layout/PromoStrip";
@@ -30,7 +30,20 @@ export function Header({
   promotions?: Promotion[];
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      setMobileOpen(false);
+      router.push("/");
+      router.refresh();
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-cream/95 backdrop-blur supports-backdrop-blur:bg-cream/80">
@@ -128,6 +141,19 @@ export function Header({
                 </Link>
               </li>
             ))}
+            {user ? (
+              <li>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-error hover:bg-error/10 disabled:opacity-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {loggingOut ? "Logging out…" : "Log out"}
+                </button>
+              </li>
+            ) : null}
           </ul>
         </nav>
       ) : null}
