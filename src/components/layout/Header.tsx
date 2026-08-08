@@ -128,7 +128,10 @@ export function Header({
               { href: "/wishlist", label: "Wishlist" },
               ...(user && user.role === "CUSTOMER" ? [{ href: "/orders", label: "Your Orders" }] : []),
               user
-                ? { href: user.role === "ADMIN" ? "/admin" : "/", label: `Hi, ${user.name.split(" ")[0]}` }
+                ? {
+                    href: user.role === "ADMIN" ? "/admin" : "/profile",
+                    label: `Hi, ${user.name.split(" ")[0]}`,
+                  }
                 : { href: "/login", label: "Account" },
             ].map((link) => (
               <li key={link.href}>

@@ -39,7 +39,7 @@ export function AccountMenu({
   return (
     <div className="hidden items-center gap-1 sm:flex">
       <Link
-        href={user.role === "ADMIN" ? "/admin" : "/"}
+        href={user.role === "ADMIN" ? "/admin" : "/profile"}
         className="rounded-md px-2 py-1.5 text-sm font-medium text-navy hover:text-gold-dark"
       >
         Hi, {user.name.split(" ")[0]}
