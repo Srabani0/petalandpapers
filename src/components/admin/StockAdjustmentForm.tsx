@@ -66,7 +66,7 @@ export function StockAdjustmentForm({ products }: { products: AdjustableProduct[
         </select>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
           <Label htmlFor="quantityChange">
             {quantityChange >= 0 ? "Quantity to Add" : "Quantity to Remove"}

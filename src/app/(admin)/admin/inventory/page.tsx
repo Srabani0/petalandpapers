@@ -56,8 +56,8 @@ export default async function AdminInventoryPage() {
                   href={`/admin/products/${p.id}/edit`}
                   className="flex items-center justify-between gap-3 py-2 text-sm hover:text-gold-dark"
                 >
-                  <span className="text-navy">{p.name}</span>
-                  <span className="font-mono text-xs text-muted">{p.sku}</span>
+                  <span className="min-w-0 truncate text-navy">{p.name}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted">{p.sku}</span>
                 </Link>
               ))}
             </div>
@@ -79,8 +79,8 @@ export default async function AdminInventoryPage() {
                   href={`/admin/products/${p.id}/edit`}
                   className="flex items-center justify-between gap-3 py-2 text-sm hover:text-gold-dark"
                 >
-                  <span className="text-navy">{p.name}</span>
-                  <span className="text-muted">
+                  <span className="min-w-0 truncate text-navy">{p.name}</span>
+                  <span className="shrink-0 whitespace-nowrap text-muted">
                     {p.stock} left <span className="text-xs">(threshold {p.lowStockThreshold})</span>
                   </span>
                 </Link>
