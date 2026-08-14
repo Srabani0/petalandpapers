@@ -8,6 +8,7 @@ import { Menu, X, Search, Heart, ShoppingBag, Package, LogOut } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { PromoStrip, type Promotion } from "@/components/layout/PromoStrip";
+import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
 
 type HeaderUser = { name: string; role: "CUSTOMER" | "ADMIN" } | null;
 
@@ -47,6 +48,7 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-cream/95 backdrop-blur supports-backdrop-blur:bg-cream/80">
+      {user ? <SessionKeepAlive /> : null}
       <div className="hidden bg-navy text-cream sm:block">
         <PromoStrip promotions={promotions} />
       </div>
