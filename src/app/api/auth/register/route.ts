@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email/brevo";
 import { registrationEmail } from "@/lib/email/templates";
 import { jsonError, zodError } from "@/lib/api-response";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   const rate = checkRateLimit(`register:${getClientIp(request)}`);
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     data: { name, email, passwordHash, verificationToken },
   });
 
-  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${verificationToken}`;
+  const verifyUrl = `${getAppUrl()}/verify-email?token=${verificationToken}`;
   await sendEmail({
     to: user.email,
     toName: user.name,

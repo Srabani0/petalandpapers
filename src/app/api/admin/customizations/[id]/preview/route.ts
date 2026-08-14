@@ -5,6 +5,7 @@ import { uploadImage, isAllowedImage, CloudinaryNotConfiguredError } from "@/lib
 import { sendEmail } from "@/lib/email/brevo";
 import { designPreviewReadyEmail } from "@/lib/email/templates";
 import { jsonError } from "@/lib/api-response";
+import { getAppUrl } from "@/lib/app-url";
 
 /** Admin uploads a design preview — kicks off (or restarts) the customer approval loop. */
 export async function POST(
@@ -48,8 +49,8 @@ export async function POST(
     });
 
     const reviewUrl = existing.order
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/orders/${existing.order.id}`
-      : `${process.env.NEXT_PUBLIC_APP_URL}/orders`;
+      ? `${getAppUrl()}/orders/${existing.order.id}`
+      : `${getAppUrl()}/orders`;
     await sendEmail({
       to: existing.customer.email,
       toName: existing.customer.name,

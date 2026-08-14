@@ -4,6 +4,7 @@ import { getOrCreateCart, computeCartTotals, RUSH_ORDER_FEE, GIFT_WRAP_FEE } fro
 import { ORDER_STATUS_LABEL } from "@/lib/order-status";
 import { sendEmail } from "@/lib/email/brevo";
 import { orderStatusEmail } from "@/lib/email/templates";
+import { getAppUrl } from "@/lib/app-url";
 
 type OrderWithPaymentAndItems = Prisma.OrderGetPayload<{
   include: { payment: true; items: true };
@@ -325,7 +326,7 @@ export async function updateOrderStatus(
     return result;
   });
 
-  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/orders/${order.id}`;
+  const orderUrl = `${getAppUrl()}/orders/${order.id}`;
   await sendEmail({
     to: order.customer.email,
     toName: order.customer.name,
