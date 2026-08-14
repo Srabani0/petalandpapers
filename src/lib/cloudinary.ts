@@ -48,6 +48,19 @@ export async function uploadImage(buffer: Buffer, folder: string) {
   });
 }
 
+/** Uploads directly from a remote URL — Cloudinary fetches it server-side,
+ * so no bytes pass through our server. Used for one-off admin seeding, not
+ * exposed through any customer- or admin-facing upload endpoint. */
+export async function uploadImageFromUrl(url: string, folder: string) {
+  if (!isConfigured()) throw new CloudinaryNotConfiguredError();
+
+  const result = await cloudinary.uploader.upload(url, {
+    folder: `petal-and-papers/${folder}`,
+    resource_type: "image",
+  });
+  return { url: result.secure_url, publicId: result.public_id };
+}
+
 export async function deleteImage(publicId: string) {
   if (!isConfigured()) throw new CloudinaryNotConfiguredError();
   await cloudinary.uploader.destroy(publicId);
