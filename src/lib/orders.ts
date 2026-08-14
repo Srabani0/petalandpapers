@@ -10,12 +10,20 @@ type OrderWithPaymentAndItems = Prisma.OrderGetPayload<{
 }>;
 type OrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
 
+// Derived from the highest existing order number for the year, not a COUNT —
+// a COUNT permanently desyncs from reality the moment any order row is ever
+// deleted (a gap left behind still collides forever after). Zero-padding to
+// a fixed width means lexicographic desc order matches numeric desc order.
 export async function generateOrderNumber() {
   const year = new Date().getFullYear();
-  const count = await prisma.order.count({
-    where: { orderNumber: { startsWith: `PP-${year}-` } },
+  const prefix = `PP-${year}-`;
+  const latest = await prisma.order.findFirst({
+    where: { orderNumber: { startsWith: prefix } },
+    orderBy: { orderNumber: "desc" },
+    select: { orderNumber: true },
   });
-  return `PP-${year}-${(count + 1).toString().padStart(5, "0")}`;
+  const lastSeq = latest ? parseInt(latest.orderNumber.slice(prefix.length), 10) : 0;
+  return `${prefix}${(lastSeq + 1).toString().padStart(5, "0")}`;
 }
 
 export interface CheckoutExtras {
@@ -46,65 +54,80 @@ export async function createPendingOrder(
   }
 
   const totals = computeCartTotals(cart);
-  const orderNumber = await generateOrderNumber();
   const rushFee = extras.isRushOrder ? RUSH_ORDER_FEE : 0;
   const giftWrapFee = extras.giftWrap ? GIFT_WRAP_FEE : 0;
   const totalAmount = totals.totalAmount + rushFee + giftWrapFee;
 
-  const order = await prisma.order.create({
-    data: {
-      orderNumber,
-      customerId: userId,
-      addressId,
-      addressSnapshot: {
-        label: address.label,
-        fullName: address.fullName,
-        phone: address.phone,
-        addressLine1: address.addressLine1,
-        addressLine2: address.addressLine2,
-        city: address.city,
-        state: address.state,
-        pincode: address.pincode,
-      },
-      couponId: cart.couponId,
-      subtotal: totals.subtotal,
-      discountAmount: totals.discountAmount,
-      couponDiscount: totals.couponDiscount,
-      deliveryCharge: totals.deliveryCharge,
-      totalAmount,
-      giftMessage: extras.giftMessage || null,
-      scheduledDeliveryDate: extras.scheduledDeliveryDate
-        ? new Date(extras.scheduledDeliveryDate)
-        : null,
-      isRushOrder: Boolean(extras.isRushOrder),
-      rushFee,
-      giftWrap: Boolean(extras.giftWrap),
-      giftWrapFee,
-      status: "PENDING",
-      items: {
-        create: cart.items.map((item) => ({
-          productId: item.productId,
-          productSnapshot: {
-            name: item.product.name,
-            sku: item.product.sku,
-            price: item.product.price.toString(),
-            finalPrice: item.product.finalPrice.toString(),
-            imageUrl: item.product.images[0]?.url ?? null,
+  // generateOrderNumber() derives the next number from a COUNT, which isn't
+  // atomic — two checkouts landing close together (a double-click, a retry,
+  // two different customers) can compute the same number. Retry on the
+  // resulting unique-constraint conflict instead of letting it 500.
+  let order: OrderWithPaymentAndItems | undefined;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const orderNumber = await generateOrderNumber();
+    try {
+      order = await prisma.order.create({
+        data: {
+          orderNumber,
+          customerId: userId,
+          addressId,
+          addressSnapshot: {
+            label: address.label,
+            fullName: address.fullName,
+            phone: address.phone,
+            addressLine1: address.addressLine1,
+            addressLine2: address.addressLine2,
+            city: address.city,
+            state: address.state,
+            pincode: address.pincode,
           },
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          customizationId: item.customizationId,
-        })),
-      },
-      payment: {
-        create: {
-          amount: totalAmount,
+          couponId: cart.couponId,
+          subtotal: totals.subtotal,
+          discountAmount: totals.discountAmount,
+          couponDiscount: totals.couponDiscount,
+          deliveryCharge: totals.deliveryCharge,
+          totalAmount,
+          giftMessage: extras.giftMessage || null,
+          scheduledDeliveryDate: extras.scheduledDeliveryDate
+            ? new Date(extras.scheduledDeliveryDate)
+            : null,
+          isRushOrder: Boolean(extras.isRushOrder),
+          rushFee,
+          giftWrap: Boolean(extras.giftWrap),
+          giftWrapFee,
           status: "PENDING",
+          items: {
+            create: cart.items.map((item) => ({
+              productId: item.productId,
+              productSnapshot: {
+                name: item.product.name,
+                sku: item.product.sku,
+                price: item.product.price.toString(),
+                finalPrice: item.product.finalPrice.toString(),
+                imageUrl: item.product.images[0]?.url ?? null,
+              },
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              customizationId: item.customizationId,
+            })),
+          },
+          payment: {
+            create: {
+              amount: totalAmount,
+              status: "PENDING",
+            },
+          },
         },
-      },
-    },
-    include: { payment: true, items: true },
-  });
+        include: { payment: true, items: true },
+      });
+      break;
+    } catch (err) {
+      const isDuplicateOrderNumber =
+        err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+      if (!isDuplicateOrderNumber || attempt === 4) throw err;
+    }
+  }
+  if (!order) throw new Error("Couldn't generate a unique order number.");
 
   return { order };
 }
