@@ -77,6 +77,35 @@ export async function getProductById(id: string, { includeArchived = false } = {
   });
 }
 
+/**
+ * Admin-curated picks (Product.relatedProductIds) take priority, in the
+ * order the admin arranged them; falls back to other active products in the
+ * same category when none have been picked yet.
+ */
+export async function getRelatedProducts(
+  product: { id: string; categoryId: string; relatedProductIds: string[] },
+  limit = 4,
+) {
+  if (product.relatedProductIds.length > 0) {
+    const picked = await prisma.product.findMany({
+      where: { id: { in: product.relatedProductIds }, status: { not: "ARCHIVED" } },
+      include: productListInclude,
+    });
+    const byId = new Map(picked.map((p) => [p.id, p]));
+    const ordered = product.relatedProductIds
+      .map((id) => byId.get(id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p));
+    if (ordered.length > 0) return ordered.slice(0, limit);
+  }
+
+  return prisma.product.findMany({
+    where: { categoryId: product.categoryId, id: { not: product.id }, status: { not: "ARCHIVED" } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: productListInclude,
+  });
+}
+
 export async function listCategories({ activeOnly = true } = {}) {
   return prisma.category.findMany({
     where: activeOnly ? { isActive: true } : undefined,

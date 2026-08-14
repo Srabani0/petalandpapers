@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { ProductImageManager } from "@/components/admin/ProductImageManager";
 import { CustomizationFormBuilder } from "@/components/admin/CustomizationFormBuilder";
+import { RelatedProductsManager } from "@/components/admin/RelatedProductsManager";
 
 export const metadata: Metadata = { title: "Edit Product" };
 
@@ -14,7 +15,7 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
 
-  const [product, categories] = await Promise.all([
+  const [product, categories, otherProducts] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       include: {
@@ -23,6 +24,16 @@ export default async function EditProductPage({
       },
     }),
     prisma.category.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
+    prisma.product.findMany({
+      where: { id: { not: id }, status: { not: "ARCHIVED" } },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        images: { where: { isPrimary: true }, take: 1, select: { url: true } },
+      },
+    }),
   ]);
 
   if (!product) notFound();
@@ -61,6 +72,26 @@ export default async function EditProductPage({
         </p>
         <div className="mt-4">
           <ProductImageManager productId={product.id} images={product.images} />
+        </div>
+      </div>
+
+      <div className="mt-10 max-w-2xl border-t border-border pt-8">
+        <h2 className="font-display text-lg text-navy">Related Products</h2>
+        <p className="mt-1 text-sm text-muted">
+          Shown as &quot;You May Also Love&quot; on this product&apos;s page. Leave empty to
+          automatically show other products from the same category instead.
+        </p>
+        <div className="mt-4">
+          <RelatedProductsManager
+            productId={product.id}
+            allProducts={otherProducts.map((p) => ({
+              id: p.id,
+              name: p.name,
+              sku: p.sku,
+              imageUrl: p.images[0]?.url ?? null,
+            }))}
+            initialSelectedIds={product.relatedProductIds}
+          />
         </div>
       </div>
 

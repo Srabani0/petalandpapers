@@ -84,3 +84,21 @@ export async function moderateReview(
 
   return { ok: true as const };
 }
+
+/** Approved reviews for a single product's page, with a star-rating breakdown. */
+export async function getProductReviews(productId: string) {
+  const reviews = await prisma.review.findMany({
+    where: { productId, status: "APPROVED" },
+    orderBy: { createdAt: "desc" },
+    include: { customer: { select: { name: true } } },
+  });
+
+  const count = reviews.length;
+  const average = count > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
+  const breakdown = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: reviews.filter((r) => r.rating === star).length,
+  }));
+
+  return { reviews, count, average, breakdown };
+}

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Truck, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Container, Section } from "@/components/ui/Container";
 import { Badge } from "@/components/ui/Badge";
 import { ProductGallery } from "@/components/shop/ProductGallery";
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { WishlistButton } from "@/components/shop/WishlistButton";
-import { getProductById } from "@/lib/products";
+import { ProductReviews } from "@/components/shop/ProductReviews";
+import { RelatedProducts } from "@/components/shop/RelatedProducts";
+import { getProductById, getRelatedProducts } from "@/lib/products";
+import { getProductReviews } from "@/lib/reviews";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getWishlistedProductIds } from "@/lib/wishlist";
 
@@ -26,7 +30,12 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) notFound();
 
   const session = await getCurrentUser();
-  const isWishlisted = session ? (await getWishlistedProductIds(session.sub)).has(product.id) : false;
+  const [wishlistedIds, reviewData, relatedProducts] = await Promise.all([
+    session ? getWishlistedProductIds(session.sub) : Promise.resolve(new Set<string>()),
+    getProductReviews(product.id),
+    getRelatedProducts(product),
+  ]);
+  const isWishlisted = wishlistedIds.has(product.id);
 
   const outOfStock = product.stock === 0 || product.status === "OUT_OF_STOCK";
   const hasDiscount = product.discountPercent > 0;
@@ -89,6 +98,42 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
         </div>
       </Container>
+
+      {reviewData.count > 0 ? (
+        <Container className="mt-16 border-t border-border pt-16">
+          <ProductReviews
+            reviews={reviewData.reviews}
+            count={reviewData.count}
+            average={reviewData.average}
+            breakdown={reviewData.breakdown}
+          />
+        </Container>
+      ) : null}
+
+      {relatedProducts.length > 0 ? (
+        <Container
+          className={cn(
+            "mt-16 pt-16",
+            reviewData.count === 0 && "border-t border-border",
+          )}
+        >
+          <RelatedProducts
+            products={relatedProducts.map((p) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price.toFixed(2),
+              finalPrice: p.finalPrice.toFixed(2),
+              discountPercent: p.discountPercent,
+              stock: p.stock,
+              status: p.status,
+              isCustomizable: p.isCustomizable,
+              category: { name: p.category.name },
+              images: p.images.map((img) => ({ url: img.url, altText: img.altText })),
+              isWishlisted: wishlistedIds.has(p.id),
+            }))}
+          />
+        </Container>
+      ) : null}
     </Section>
   );
 }
