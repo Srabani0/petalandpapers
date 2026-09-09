@@ -7,11 +7,26 @@ export function computeFinalPrice(price: number | Prisma.Decimal, discountPercen
   return Math.round(base * (1 - discountPercent / 100) * 100) / 100;
 }
 
-/** Category prefix + next sequence number, e.g. SCRAP-001 (FR-PROD-02). */
+/**
+ * Category prefix + next sequence number, e.g. SCRAP-001 (FR-PROD-02).
+ * Derived from the highest existing SKU with this prefix, not a COUNT of
+ * products currently in the category — a COUNT breaks two ways: a deleted
+ * product leaves a gap that collides forever, and re-categorizing or
+ * renaming a product (via the edit form) leaves its SKU's prefix mismatched
+ * with its current category, so "products in this category" and "SKUs with
+ * this prefix" silently drift apart. SKU uniqueness is global and
+ * prefix-scoped, so that's the domain this must query.
+ */
 export async function generateSku(categoryId: string) {
   const category = await prisma.category.findUniqueOrThrow({ where: { id: categoryId } });
-  const count = await prisma.product.count({ where: { categoryId } });
-  return `${category.skuPrefix}-${(count + 1).toString().padStart(3, "0")}`;
+  const prefix = `${category.skuPrefix}-`;
+  const latest = await prisma.product.findFirst({
+    where: { sku: { startsWith: prefix } },
+    orderBy: { sku: "desc" },
+    select: { sku: true },
+  });
+  const lastSeq = latest ? parseInt(latest.sku.slice(prefix.length), 10) : 0;
+  return `${prefix}${(lastSeq + 1).toString().padStart(3, "0")}`;
 }
 
 const productListInclude = {
