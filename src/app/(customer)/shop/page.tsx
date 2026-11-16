@@ -9,8 +9,37 @@ import { listProducts, listCategories } from "@/lib/products";
 import { productListQuerySchema } from "@/lib/validations/product";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getWishlistedProductIds } from "@/lib/wishlist";
+import { absoluteUrl } from "@/lib/seo/site";
 
-export const metadata: Metadata = { title: "Shop" };
+type ShopSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/**
+ * /shop is the one indexable "all products" listing. Every filtered/sorted/
+ * searched/paginated variant is a near-duplicate of it (or of a /category page),
+ * so those are noindex + canonicalized — otherwise Google spreads ranking
+ * across thousands of parameter URLs.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: ShopSearchParams;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const hasVariant = Object.keys(params).length > 0;
+  const category = typeof params.category === "string" ? params.category : undefined;
+
+  const title = "Shop Handmade & Personalized Gifts";
+  const description =
+    "Browse all handmade and customizable gifts from Petal & Papers — scrapbooks, explosion boxes, crochet bouquets, keychains, photo frames and gift hampers, delivered across India.";
+
+  return {
+    title,
+    description,
+    alternates: { canonical: category ? `/category/${category}` : "/shop" },
+    ...(hasVariant ? { robots: { index: false, follow: true } } : {}),
+    openGraph: { title, description, url: absoluteUrl("/shop"), type: "website" },
+  };
+}
 
 export default async function ShopPage({
   searchParams,

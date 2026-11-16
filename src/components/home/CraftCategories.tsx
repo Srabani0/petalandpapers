@@ -53,7 +53,7 @@ export function CraftCategories({ categories }: { categories: CategoryTile[] }) 
                 className="flex shrink-0 snap-start justify-center"
               >
                 <Link
-                  href={`/shop?category=${slug}`}
+                  href={`/category/${slug}`}
                   className="group flex w-24 cursor-pointer flex-col items-center gap-3 sm:w-28"
                 >
                   <span className="flex h-[90px] w-[90px] shrink-0 items-center justify-center rounded-full border-[3px] border-white shadow-[0_4px_14px_-4px_rgba(0,0,0,0.15)] ring-1 ring-[#E8DED3] transition-all duration-300 ease-out group-hover:-translate-y-1 group-hover:rotate-3 group-hover:shadow-[0_10px_24px_-8px_rgba(200,155,109,0.45)] group-hover:ring-[#C89B6D]">

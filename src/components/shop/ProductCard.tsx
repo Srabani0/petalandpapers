@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Sparkles, ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { WishlistButton } from "@/components/shop/WishlistButton";
+import { productPath } from "@/lib/seo/site";
 
 export interface ProductCardData {
   id: string;
@@ -25,7 +26,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
 
   return (
     <Link
-      href={`/product/${product.id}`}
+      href={productPath(product)}
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-paper transition-all hover:-translate-y-1 hover:border-gold/40 hover:shadow-[0_16px_40px_-16px_rgba(30,42,74,0.25)]"
     >
       <div className="relative aspect-square bg-cream-dark">

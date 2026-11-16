@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Container, Section } from "@/components/ui/Container";
 
-export const metadata: Metadata = { title: "Terms & Conditions" };
+export const metadata: Metadata = {
+  title: "Terms & Conditions",
+  description: "The terms that apply when you shop with Petal & Papers.",
+  alternates: { canonical: "/terms-conditions" },
+};
 
 export default function TermsConditionsPage() {
   return (

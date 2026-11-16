@@ -8,7 +8,10 @@ import { ProductGrid } from "@/components/shop/ProductGrid";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getWishlistItems } from "@/lib/wishlist";
 
-export const metadata: Metadata = { title: "Wishlist" };
+export const metadata: Metadata = {
+  title: "Wishlist",
+  robots: { index: false, follow: false },
+};
 
 export default async function WishlistPage() {
   const session = await getCurrentUser();

@@ -4,7 +4,12 @@ import { HandHeart, Leaf, Sparkles } from "lucide-react";
 import { Container, Section } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-export const metadata: Metadata = { title: "Our Story" };
+export const metadata: Metadata = {
+  title: "Our Story – Handmade Gifts Made With Love",
+  description:
+    "The story behind Petal & Papers: an Indian studio crafting handmade, personalized scrapbooks, bouquets, explosion boxes and gifts, made to order and built around your memories.",
+  alternates: { canonical: "/about" },
+};
 
 const VALUES = [
   {

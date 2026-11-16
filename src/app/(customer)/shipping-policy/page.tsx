@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Container, Section } from "@/components/ui/Container";
 
-export const metadata: Metadata = { title: "Shipping Policy" };
+export const metadata: Metadata = {
+  title: "Shipping Policy",
+  description:
+    "Petal & Papers ships across India. Delivery is ₹99 per order, free above ₹999, typically 3–10 business days for made-to-order gifts.",
+  alternates: { canonical: "/shipping-policy" },
+};
 
 export default function ShippingPolicyPage() {
   return (

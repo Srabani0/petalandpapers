@@ -6,7 +6,10 @@ import { getOrCreateCart, computeCartTotals } from "@/lib/cart";
 import { CartView } from "@/components/cart/CartView";
 import { toCartItemView } from "@/lib/cart-view";
 
-export const metadata: Metadata = { title: "Your Cart" };
+export const metadata: Metadata = {
+  title: "Your Cart",
+  robots: { index: false, follow: false },
+};
 
 export default async function CartPage() {
   const session = await getCurrentUser();

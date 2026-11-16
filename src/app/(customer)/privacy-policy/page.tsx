@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Container, Section } from "@/components/ui/Container";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "How Petal & Papers collects, uses and protects your personal information.",
+  alternates: { canonical: "/privacy-policy" },
+};
 
 export default function PrivacyPolicyPage() {
   return (

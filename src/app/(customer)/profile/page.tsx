@@ -10,7 +10,10 @@ import { prisma } from "@/lib/prisma";
 import { AddressBook } from "@/components/profile/AddressBook";
 import { LogoutButton } from "@/components/profile/LogoutButton";
 
-export const metadata: Metadata = { title: "Your Account" };
+export const metadata: Metadata = {
+  title: "Your Account",
+  robots: { index: false, follow: false },
+};
 
 export default async function ProfilePage() {
   const session = await getCurrentUser();

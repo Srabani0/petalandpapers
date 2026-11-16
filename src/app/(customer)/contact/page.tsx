@@ -3,14 +3,22 @@ import { Mail, Clock, MapPin } from "lucide-react";
 import { Container, Section } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Card, CardBody } from "@/components/ui/Card";
+import { ContactForm } from "@/components/contact/ContactForm";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { SITE, absoluteUrl } from "@/lib/seo/site";
 
-export const metadata: Metadata = { title: "Contact" };
+export const metadata: Metadata = {
+  title: "Contact Us – Custom Orders & Gift Enquiries",
+  description:
+    "Questions about a custom gift, bulk gifting or an existing order? Message Petal & Papers — we reply within 24 hours.",
+  alternates: { canonical: "/contact" },
+};
 
 const CONTACT_DETAILS = [
   {
     icon: Mail,
     title: "Email Us",
-    detail: "srabaninahak664@gmail.com",
+    detail: SITE.email,
   },
   {
     icon: Clock,
@@ -27,6 +35,15 @@ const CONTACT_DETAILS = [
 export default function ContactPage() {
   return (
     <Section>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "ContactPage",
+          url: absoluteUrl("/contact"),
+          name: "Contact Petal & Papers",
+          about: { "@type": "Organization", name: SITE.name, email: SITE.email },
+        }}
+      />
       <Container>
         <SectionHeading
           eyebrow="Get in Touch"
@@ -46,14 +63,16 @@ export default function ContactPage() {
           ))}
         </div>
 
-        <p className="mx-auto mt-10 max-w-md text-center text-sm text-muted">
-          A contact form is on its way — for now, the fastest way to reach us is by
-          email at{" "}
-          <a href="mailto:srabaninahak664@gmail.com" className="text-gold-dark underline underline-offset-4">
-            srabaninahak664@gmail.com
-          </a>
-          .
-        </p>
+        <div className="mx-auto mt-10 max-w-2xl">
+          <ContactForm />
+          <p className="mt-6 text-center text-sm text-muted">
+            Prefer email? Write to{" "}
+            <a href={`mailto:${SITE.email}`} className="text-gold-dark underline underline-offset-4">
+              {SITE.email}
+            </a>
+            .
+          </p>
+        </div>
       </Container>
     </Section>
   );

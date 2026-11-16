@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
 import { CraftCategories } from "@/components/home/CraftCategories";
 import { FeaturedProducts } from "@/components/home/FeaturedProducts";
@@ -12,6 +13,15 @@ import { getWishlistedProductIds } from "@/lib/wishlist";
 import { listFeaturedReviews } from "@/lib/reviews";
 import { getHeroContent } from "@/lib/hero";
 import { getFounderStory } from "@/lib/founder-story";
+import { SeoIntro } from "@/components/home/SeoIntro";
+import { Faq } from "@/components/home/Faq";
+import { SITE } from "@/lib/seo/site";
+
+export const metadata: Metadata = {
+  title: { absolute: SITE.defaultTitle },
+  description: SITE.description,
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const [categories, featured, session, featuredReviews, heroContent, autoShowcaseImages, founderStory] =
@@ -81,6 +91,8 @@ export default async function HomePage() {
         founderName={founderStory.founderName}
       />
       <Testimonials reviews={testimonials} />
+      <SeoIntro categories={categories.map((c) => ({ slug: c.slug, name: c.name }))} />
+      <Faq />
     </>
   );
 }

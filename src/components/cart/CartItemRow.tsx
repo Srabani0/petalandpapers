@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ImageOff, Minus, Plus, Trash2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { productPath } from "@/lib/seo/site";
 
 export interface CartItemView {
   id: string;
@@ -30,7 +31,7 @@ export function CartItemRow({
   return (
     <div className="flex gap-4 border-b border-border py-5 last:border-0">
       <Link
-        href={`/product/${item.productId}`}
+        href={productPath({ id: item.productId, name: item.productName })}
         className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-cream-dark"
       >
         {item.productImage ? (
@@ -46,7 +47,7 @@ export function CartItemRow({
         <div className="flex items-start justify-between gap-3">
           <div>
             <Link
-              href={`/product/${item.productId}`}
+              href={productPath({ id: item.productId, name: item.productName })}
               className="font-display text-sm text-navy hover:text-gold-dark sm:text-base"
             >
               {item.productName}

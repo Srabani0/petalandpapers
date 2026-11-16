@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { VerifyEmailStatus } from "@/components/auth/VerifyEmailStatus";
 
-export const metadata: Metadata = { title: "Verify Email" };
+export const metadata: Metadata = {
+  title: "Verify Email",
+  robots: { index: false, follow: false },
+};
 
 export default function VerifyEmailPage() {
   return (

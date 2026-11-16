@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { SiteChrome } from "@/components/layout/SiteChrome";
@@ -6,6 +6,9 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getCartItemCount } from "@/lib/cart";
 import { getWishlistCount } from "@/lib/wishlist";
 import { getActivePromotions } from "@/lib/promotions";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
+import { SITE, siteUrl } from "@/lib/seo/site";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -25,12 +28,55 @@ const dancingScript = Dancing_Script({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: {
-    default: "Petal & Papers | Handcrafted & Personalized Gifts",
-    template: "%s | Petal & Papers",
+    default: SITE.defaultTitle,
+    template: `%s | ${SITE.name}`,
   },
-  description:
-    "Handcrafted gifts, made from the heart. Shop scrapbooks, explosion boxes, personalized bouquets, keychains, frames and more — customized just for the people you love.",
+  description: SITE.description,
+  applicationName: SITE.name,
+  keywords: [...SITE.keywords],
+  authors: [{ name: SITE.name }],
+  creator: SITE.name,
+  publisher: SITE.name,
+  category: "shopping",
+  formatDetection: { email: false, address: false, telephone: false },
+  // NOTE: no site-wide `alternates.canonical` here — it would be inherited by
+  // every page and point them all at the homepage. Each page sets its own.
+  openGraph: {
+    type: "website",
+    siteName: SITE.name,
+    locale: SITE.locale,
+    title: SITE.defaultTitle,
+    description: SITE.description,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE.defaultTitle,
+    description: SITE.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  verification: {
+    google: SITE.verification.google,
+    other: SITE.verification.bing ? { "msvalidate.01": SITE.verification.bing } : undefined,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: SITE.themeColor,
 };
 
 export default async function RootLayout({
@@ -46,10 +92,11 @@ export default async function RootLayout({
 
   return (
     <html
-      lang="en"
+      lang="en-IN"
       className={`${playfair.variable} ${inter.variable} ${dancingScript.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-cream text-ink">
+        <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         <SiteChrome user={user} cartCount={cartCount} wishlistCount={wishlistCount} promotions={promotions}>
           {children}
         </SiteChrome>

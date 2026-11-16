@@ -9,7 +9,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_BADGE_VARIANT } from "@/lib/order-status";
 
-export const metadata: Metadata = { title: "Your Orders" };
+export const metadata: Metadata = {
+  title: "Your Orders",
+  robots: { index: false, follow: false },
+};
 
 export default async function OrdersPage() {
   const session = await getCurrentUser();

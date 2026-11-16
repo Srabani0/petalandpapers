@@ -87,3 +87,44 @@ export function designPreviewReadyEmail({
      ${button(reviewUrl, "Review My Design")}`,
   );
 }
+
+/** Escapes user-supplied text before interpolating it into an HTML email. */
+export function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function contactMessageEmail({
+  name,
+  email,
+  phone,
+  topic,
+  orderNumber,
+  message,
+}: {
+  name: string;
+  email: string;
+  phone?: string;
+  topic: string;
+  orderNumber?: string;
+  message: string;
+}) {
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding: 4px 12px 4px 0; color: #7a756c; font-size: 13px; vertical-align: top;">${label}</td><td style="padding: 4px 0; font-size: 14px;">${escapeHtml(value)}</td></tr>`;
+
+  return baseTemplate(
+    `New message: ${escapeHtml(topic)}`,
+    `<table style="border-collapse: collapse; margin-bottom: 16px;">
+       ${row("From", name)}
+       ${row("Email", email)}
+       ${phone ? row("Phone", phone) : ""}
+       ${orderNumber ? row("Order", orderNumber) : ""}
+     </table>
+     <p style="white-space: pre-wrap; line-height: 1.6; background: #f2ead9; padding: 16px; border-radius: 8px; margin: 0;">${escapeHtml(message)}</p>
+     <p style="font-size: 12px; color: #7a756c; margin-top: 16px;">Hit Reply to answer ${escapeHtml(name)} directly.</p>`,
+  );
+}

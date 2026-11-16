@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Container, Section } from "@/components/ui/Container";
 
-export const metadata: Metadata = { title: "Refund & Cancellation Policy" };
+export const metadata: Metadata = {
+  title: "Refund & Cancellation Policy",
+  description:
+    "How cancellations, refunds and damaged-item claims work for handmade, made-to-order gifts at Petal & Papers.",
+  alternates: { canonical: "/refund-policy" },
+};
 
 export default function RefundPolicyPage() {
   return (

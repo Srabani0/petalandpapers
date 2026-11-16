@@ -5,6 +5,8 @@ interface SendEmailParams {
   toName?: string;
   subject: string;
   html: string;
+  /** Where a plain "Reply" should go (e.g. the customer who filled in a contact form). */
+  replyTo?: { email: string; name?: string };
 }
 
 /**
@@ -13,7 +15,7 @@ interface SendEmailParams {
  * (NFR-REL-05). Failures are logged; in development, the email is also
  * logged in full so auth flows are testable without a real Brevo account.
  */
-export async function sendEmail({ to, toName, subject, html }: SendEmailParams) {
+export async function sendEmail({ to, toName, subject, html, replyTo }: SendEmailParams) {
   const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SENDER_EMAIL || "srabaninahak664@gmail.com";
   const senderName = process.env.BREVO_SENDER_NAME || "Petal & Papers";
@@ -38,6 +40,7 @@ export async function sendEmail({ to, toName, subject, html }: SendEmailParams) 
       body: JSON.stringify({
         sender: { email: senderEmail, name: senderName },
         to: [{ email: to, name: toName }],
+        ...(replyTo ? { replyTo } : {}),
         subject,
         htmlContent: html,
       }),

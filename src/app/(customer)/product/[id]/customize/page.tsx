@@ -6,15 +6,20 @@ import { Container, Section } from "@/components/ui/Container";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { CustomizationForm } from "@/components/customize/CustomizationForm";
+import { parseProductParam, productPath } from "@/lib/seo/site";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export const metadata: Metadata = { title: "Customize Your Gift" };
+export const metadata: Metadata = {
+  title: "Customize Your Gift",
+  robots: { index: false, follow: false },
+};
 
 export default async function CustomizePage({ params }: Props) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseProductParam(rawId);
 
   const session = await getCurrentUser();
   if (!session) {
@@ -26,7 +31,7 @@ export default async function CustomizePage({ params }: Props) {
     include: { customizationForm: { include: { fields: { orderBy: { sortOrder: "asc" } } } } },
   });
   if (!product) notFound();
-  if (!product.isCustomizable) redirect(`/product/${id}`);
+  if (!product.isCustomizable) redirect(productPath(product));
 
   const form = product.customizationForm;
 
@@ -34,7 +39,7 @@ export default async function CustomizePage({ params }: Props) {
     <Section>
       <Container className="max-w-2xl">
         <Link
-          href={`/product/${id}`}
+          href={productPath(product)}
           className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-navy"
         >
           <ArrowLeft className="h-4 w-4" />
