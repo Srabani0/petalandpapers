@@ -49,6 +49,16 @@ export async function createPendingOrder(
   if (cart.items.length === 0) return { error: "Your cart is empty." as const };
 
   for (const item of cart.items) {
+    if (item.design) {
+      // Studio designs are made to order (no stock), but must have a print
+      // file that matches the saved canvas before anyone can pay for them.
+      if (!item.design.printUrl) {
+        return {
+          error: `Please open and save your "${item.design.template.name}" design before checking out.` as const,
+        };
+      }
+      continue;
+    }
     if (item.quantity > item.product.stock) {
       return { error: `"${item.product.name}" only has ${item.product.stock} left in stock.` as const };
     }
@@ -100,16 +110,27 @@ export async function createPendingOrder(
           items: {
             create: cart.items.map((item) => ({
               productId: item.productId,
-              productSnapshot: {
-                name: item.product.name,
-                sku: item.product.sku,
-                price: item.product.price.toString(),
-                finalPrice: item.product.finalPrice.toString(),
-                imageUrl: item.product.images[0]?.url ?? null,
-              },
+              productSnapshot: item.design
+                ? {
+                    name: `${item.design.template.name} (${item.design.template.sizeLabel})`,
+                    sku: item.product.sku,
+                    price: item.unitPrice.toString(),
+                    finalPrice: item.unitPrice.toString(),
+                    imageUrl: item.design.previewUrl,
+                    designId: item.design.id,
+                    designPrintUrl: item.design.printUrl,
+                  }
+                : {
+                    name: item.product.name,
+                    sku: item.product.sku,
+                    price: item.product.price.toString(),
+                    finalPrice: item.product.finalPrice.toString(),
+                    imageUrl: item.product.images[0]?.url ?? null,
+                  },
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               customizationId: item.customizationId,
+              designId: item.designId,
             })),
           },
           payment: {
@@ -130,6 +151,13 @@ export async function createPendingOrder(
   }
   if (!order) throw new Error("Couldn't generate a unique order number.");
 
+  // Lock every design in this order: its print file is now part of an order
+  // record and must never change. Further edits go into a copy.
+  const designIds = cart.items.flatMap((item) => (item.designId ? [item.designId] : []));
+  if (designIds.length > 0) {
+    await prisma.design.updateMany({ where: { id: { in: designIds } }, data: { status: "ORDERED" } });
+  }
+
   return { order };
 }
 
@@ -147,6 +175,8 @@ async function finalizeConfirmedOrder(tx: Prisma.TransactionClient, order: Order
   });
 
   for (const item of confirmed.items) {
+    if (item.designId) continue; // made-to-order studio design — no stock to deduct
+
     const product = await tx.product.findUnique({ where: { id: item.productId } });
     if (!product) continue;
 
@@ -297,6 +327,7 @@ export async function updateOrderStatus(
 
     if (shouldRestock) {
       for (const item of order.items) {
+        if (item.designId) continue; // studio designs never deducted stock
         const product = await tx.product.findUnique({ where: { id: item.productId } });
         if (!product) continue;
 

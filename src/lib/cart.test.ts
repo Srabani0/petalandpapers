@@ -13,7 +13,7 @@ type Coupon = {
 };
 
 function cart(
-  items: { price: number; unitPrice: number; quantity: number }[],
+  items: { price: number; unitPrice: number; quantity: number; designId?: string }[],
   coupon: Coupon | null = null,
 ) {
   return {
@@ -21,6 +21,7 @@ function cart(
       product: { price: i.price },
       unitPrice: i.unitPrice,
       quantity: i.quantity,
+      designId: i.designId ?? null,
     })),
     coupon,
   } as unknown as CartWithItems;
@@ -64,6 +65,26 @@ describe("computeCartTotals", () => {
     );
     expect(t.couponDiscount).toBe(100);
     expect(t.totalAmount).toBe(DELIVERY_CHARGE); // goods are free, delivery still charged
+  });
+
+  it("studio designs are priced by their template, not the linked product's MRP", () => {
+    // Linked product MRP 300, template price 1299 → no fake 'discount', no negative maths.
+    const t = computeCartTotals(cart([{ price: 300, unitPrice: 1299, quantity: 2, designId: "d1" }]));
+    expect(t.subtotal).toBe(2598);
+    expect(t.discountAmount).toBe(0);
+    expect(t.totalAmount).toBe(2598);
+  });
+
+  it("mixes design and regular items correctly", () => {
+    const t = computeCartTotals(
+      cart([
+        { price: 1000, unitPrice: 800, quantity: 1 },
+        { price: 50, unitPrice: 499, quantity: 1, designId: "d1" },
+      ]),
+    );
+    expect(t.subtotal).toBe(1499);
+    expect(t.discountAmount).toBe(200);
+    expect(t.totalAmount).toBe(1299);
   });
 
   it("coupon discount is applied BEFORE the free-delivery check", () => {

@@ -62,7 +62,7 @@ export function CtaBand() {
 
           <div className="mt-2 flex flex-wrap items-center justify-center gap-4">
             <Link
-              href="/shop?customizable=true"
+              href="/studio"
               className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-gold to-gold-dark px-8 py-3.5 text-sm font-semibold tracking-wide text-cream shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
             >
               Start Customizing

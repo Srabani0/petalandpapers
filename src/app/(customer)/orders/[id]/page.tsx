@@ -109,7 +109,10 @@ export default async function OrderDetailPage({ params }: Props) {
             <div className="rounded-xl border border-border bg-paper p-5 sm:p-6">
               <h2 className="font-display text-lg text-navy">Status</h2>
               <div className="mt-4">
-                <OrderTimeline status={order.status} isCustomized={order.customizationRequests.length > 0} />
+                <OrderTimeline
+                  status={order.status}
+                  isCustomized={order.customizationRequests.length > 0 || order.items.some((i) => i.designId)}
+                />
               </div>
             </div>
 

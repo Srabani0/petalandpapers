@@ -16,6 +16,8 @@ const DISALLOW = [
   "/forgot-password",
   "/verify-email",
   "/product/*/customize",
+  "/studio/design/",
+  "/studio/my-designs",
   "/shop?*",
 ];
 

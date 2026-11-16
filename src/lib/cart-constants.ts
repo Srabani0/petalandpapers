@@ -5,3 +5,5 @@ export const FREE_DELIVERY_THRESHOLD = 999;
 export const DELIVERY_CHARGE = 99;
 export const RUSH_ORDER_FEE = 149;
 export const GIFT_WRAP_FEE = 49;
+/** Max copies of one Design Studio design per cart line (mirrors MAX_DESIGN_QUANTITY in lib/cart). */
+export const MAX_DESIGN_QUANTITY_CLIENT = 20;

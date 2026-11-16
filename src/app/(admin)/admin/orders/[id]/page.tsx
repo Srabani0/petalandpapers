@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Gift, Zap, CalendarHeart, MessageSquareHeart } from "lucide-react";
+import Image from "next/image";
+import { Gift, Zap, CalendarHeart, MessageSquareHeart, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/Badge";
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
@@ -26,6 +27,8 @@ interface ProductSnapshot {
   name: string;
   sku: string;
   imageUrl: string | null;
+  designId?: string;
+  designPrintUrl?: string | null;
 }
 
 export const metadata: Metadata = { title: "Order Detail" };
@@ -46,7 +49,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   if (!order) notFound();
 
   const address = order.addressSnapshot as unknown as AddressSnapshot;
-  const isCustomized = order.customizationRequests.length > 0;
+  const isCustomized = order.customizationRequests.length > 0 || order.items.some((item) => item.designId);
   const statusOptions = getAllStatusOptions(isCustomized);
 
   return (
@@ -77,9 +80,32 @@ export default async function AdminOrderDetailPage({ params }: Props) {
                 const snapshot = item.productSnapshot as unknown as ProductSnapshot;
                 return (
                   <div key={item.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="text-sm font-medium text-navy">{snapshot.name}</p>
-                      <p className="font-mono text-xs text-muted">{snapshot.sku}</p>
+                    <div className="flex items-center gap-3">
+                      {snapshot.designPrintUrl ? (
+                        <a
+                          href={snapshot.designPrintUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-[#ebe7df]"
+                          title="Open full-resolution print file"
+                        >
+                          {snapshot.imageUrl ? (
+                            <Image src={snapshot.imageUrl} alt="" fill sizes="64px" className="object-contain" />
+                          ) : null}
+                        </a>
+                      ) : null}
+                      <div>
+                        <p className="text-sm font-medium text-navy">{snapshot.name}</p>
+                        <p className="font-mono text-xs text-muted">{snapshot.sku}</p>
+                        {snapshot.designPrintUrl ? (
+                          <a
+                            href={printDownloadUrl(snapshot.designPrintUrl, `${order.orderNumber}-${item.id.slice(0, 6)}`)}
+                            className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-gold-dark hover:underline"
+                          >
+                            <Download className="h-3.5 w-3.5" /> Download print file
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="text-right text-sm">
                       <p className="text-navy">Qty {item.quantity}</p>
@@ -201,6 +227,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       </div>
     </div>
   );
+}
+
+/** Cloudinary's fl_attachment makes the browser download the original file instead of opening it. */
+function printDownloadUrl(url: string, name: string) {
+  return url.includes("/image/upload/")
+    ? url.replace("/image/upload/", `/image/upload/fl_attachment:${name.replace(/[^a-zA-Z0-9_-]/g, "_")}/`)
+    : url;
 }
 
 function Row({ label, value }: { label: string; value: number | string }) {

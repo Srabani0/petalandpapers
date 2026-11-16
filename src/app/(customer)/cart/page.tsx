@@ -36,6 +36,7 @@ export default async function CartPage() {
                   stock: item.product.stock,
                   images: item.product.images,
                 },
+                design: item.design,
               }),
             )}
             initialTotals={totals}

@@ -17,6 +17,8 @@ const NOINDEX_SOURCES = [
   "/forgot-password",
   "/verify-email",
   "/product/:id/customize",
+  "/studio/design/:path*",
+  "/studio/my-designs",
 ];
 
 const nextConfig: NextConfig = {

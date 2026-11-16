@@ -8,11 +8,22 @@ import {
 
 export { FREE_DELIVERY_THRESHOLD, DELIVERY_CHARGE, RUSH_ORDER_FEE, GIFT_WRAP_FEE };
 
+export const MAX_DESIGN_QUANTITY = 20;
+
 const cartInclude = {
   items: {
     include: {
       product: { include: { images: { orderBy: { sortOrder: "asc" as const }, take: 1 } } },
       customization: true,
+      design: {
+        select: {
+          id: true,
+          previewUrl: true,
+          printUrl: true,
+          status: true,
+          template: { select: { name: true, sizeLabel: true } },
+        },
+      },
     },
     orderBy: { id: "asc" as const },
   },
@@ -56,7 +67,10 @@ export function computeCartTotals(cart: CartWithItems) {
   let afterProductDiscount = 0;
 
   for (const item of cart.items) {
-    subtotal += Number(item.product.price) * item.quantity;
+    // Studio designs are priced by their template, so the linked product's
+    // MRP is meaningless for them — their "MRP" is their own unit price.
+    const mrp = item.designId ? Number(item.unitPrice) : Number(item.product.price);
+    subtotal += mrp * item.quantity;
     afterProductDiscount += Number(item.unitPrice) * item.quantity;
   }
 
@@ -168,7 +182,12 @@ export async function updateCartItemQuantity(
     include: { cart: true, product: true },
   });
   if (!item || item.cart.userId !== userId) return { error: "Cart item not found." as const };
-  if (quantity > item.product.stock) {
+  if (item.designId) {
+    // Made-to-order studio designs don't draw on product stock.
+    if (quantity > MAX_DESIGN_QUANTITY) {
+      return { error: `You can order up to ${MAX_DESIGN_QUANTITY} of a design at once.` as const };
+    }
+  } else if (quantity > item.product.stock) {
     return { error: `Only ${item.product.stock} left in stock.` as const };
   }
 

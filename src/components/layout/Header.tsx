@@ -14,7 +14,7 @@ type HeaderUser = { name: string; role: "CUSTOMER" | "ADMIN" } | null;
 
 const NAV_LINKS = [
   { href: "/shop", label: "Shop" },
-  { href: "/shop?customizable=true", label: "Customize" },
+  { href: "/studio", label: "Customize" },
   { href: "/about", label: "Our Story" },
   { href: "/contact", label: "Contact" },
 ];

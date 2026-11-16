@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { ImageOff, Minus, Plus, Trash2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { productPath } from "@/lib/seo/site";
 
 export interface CartItemView {
   id: string;
@@ -15,6 +14,10 @@ export interface CartItemView {
   unitPrice: number;
   stock: number;
   isCustomized: boolean;
+  /** Where the item's name/image links to (product page, or the design in the studio). */
+  href: string;
+  /** Studio design whose print file is out of date — must be re-saved before checkout. */
+  designNeedsSave?: boolean;
 }
 
 export function CartItemRow({
@@ -28,10 +31,11 @@ export function CartItemRow({
   onRemove: () => void;
   busy: boolean;
 }) {
+  const isDesign = item.href.startsWith("/studio/");
   return (
     <div className="flex gap-4 border-b border-border py-5 last:border-0">
       <Link
-        href={productPath({ id: item.productId, name: item.productName })}
+        href={item.href}
         className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-cream-dark"
       >
         {item.productImage ? (
@@ -47,15 +51,20 @@ export function CartItemRow({
         <div className="flex items-start justify-between gap-3">
           <div>
             <Link
-              href={productPath({ id: item.productId, name: item.productName })}
+              href={item.href}
               className="font-display text-sm text-navy hover:text-gold-dark sm:text-base"
             >
               {item.productName}
             </Link>
+            {item.designNeedsSave ? (
+              <Link href={item.href} className="mt-1 block text-xs text-error underline underline-offset-2">
+                Open and save this design before checkout
+              </Link>
+            ) : null}
             {item.isCustomized && (
               <Badge variant="gold" className="mt-1 block w-fit">
                 <Sparkles className="h-3 w-3" />
-                Customized
+                {isDesign ? "Your design" : "Customized"}
               </Badge>
             )}
           </div>
@@ -75,7 +84,7 @@ export function CartItemRow({
             <button
               type="button"
               onClick={() => onQuantityChange(item.quantity - 1)}
-              disabled={busy || item.quantity <= 1 || item.isCustomized}
+              disabled={busy || item.quantity <= 1 || (item.isCustomized && !isDesign)}
               className="flex h-8 w-8 items-center justify-center text-navy disabled:opacity-30"
               aria-label="Decrease quantity"
             >
@@ -85,7 +94,7 @@ export function CartItemRow({
             <button
               type="button"
               onClick={() => onQuantityChange(item.quantity + 1)}
-              disabled={busy || item.quantity >= item.stock || item.isCustomized}
+              disabled={busy || item.quantity >= item.stock || (item.isCustomized && !isDesign)}
               className="flex h-8 w-8 items-center justify-center text-navy disabled:opacity-30"
               aria-label="Increase quantity"
             >

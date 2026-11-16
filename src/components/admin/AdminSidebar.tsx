@@ -16,6 +16,7 @@ import {
   LogOut,
   Image as ImageIcon,
   HeartHandshake,
+  Palette,
   Menu,
   X,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { href: "/admin/founder-story", label: "Founder Story", icon: HeartHandshake },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/studio", label: "Design Studio", icon: Palette },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes },
