@@ -13,7 +13,6 @@ import { getWishlistedProductIds } from "@/lib/wishlist";
 import { listFeaturedReviews } from "@/lib/reviews";
 import { getHeroContent } from "@/lib/hero";
 import { getFounderStory } from "@/lib/founder-story";
-import { SeoIntro } from "@/components/home/SeoIntro";
 import { Faq } from "@/components/home/Faq";
 import { SITE } from "@/lib/seo/site";
 
@@ -91,7 +90,6 @@ export default async function HomePage() {
         founderName={founderStory.founderName}
       />
       <Testimonials reviews={testimonials} />
-      <SeoIntro categories={categories.map((c) => ({ slug: c.slug, name: c.name }))} />
       <Faq />
     </>
   );
