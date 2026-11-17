@@ -2,10 +2,12 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Stage, Layer, Group, Rect, Ellipse, Text as KText, Image as KImage, Transformer, Line } from "react-konva";
-import type Konva from "konva";
+import Konva from "konva";
 import {
   MIN_SIZE,
+  detectShelves,
   docImageUrls,
+  type StandingGroup,
   type DesignDoc,
   type DesignNode,
   type ImageNode,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/studio/doc";
 import { STUDIO_FONTS, loadStudioFonts } from "@/components/studio/fonts";
 import { loadImage, useLoadedImage } from "@/components/studio/editor/images";
+import type { Scene3D, StandingItem3D } from "@/components/studio/three/scene";
 
 export const DRAG_MIME = "application/x-pp-studio";
 
@@ -27,6 +30,11 @@ export interface CanvasHandle {
   exportBlob(opts: { maxSide: number; mimeType?: "image/jpeg" | "image/png"; quality?: number }): Promise<Blob>;
   /** Fast, synchronous low-res snapshot of what's on screen now (for live mockups). */
   quickPreview(maxSide: number): string | null;
+  /**
+   * 3D-miniature snapshot: the wall print *without* the standing groups, plus
+   * each standing group cut out on a transparent background.
+   */
+  sceneSnapshot(maxSide: number, standing: StandingGroup[]): Scene3D | null;
 }
 
 interface Props {
@@ -228,6 +236,7 @@ function BackgroundImage({ src, width, height }: { src: string; width: number; h
       width={width}
       height={height}
       crop={{ x: (iw - cw) / 2, y: (ih - ch) / 2, width: cw, height: ch }}
+      name="background"
       listening={false}
     />
   );
@@ -261,8 +270,11 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
   }, []);
 
   const selected = doc.nodes.find((n) => n.id === selectedId) ?? null;
-  const canSelect = (node: DesignNode) => !readOnly && (mode === "admin" || !node.locked);
-  const canMove = (node: DesignNode) => !readOnly && !node.locked;
+  // A locked node with slideY (e.g. a shelf) is still part of the skeleton —
+  // no resizing, rotating or deleting — but anyone may slide it up or down.
+  const slideOnly = (node: DesignNode) => node.locked && Boolean(node.slideY);
+  const canSelect = (node: DesignNode) => !readOnly && (mode === "admin" || !node.locked || slideOnly(node));
+  const canMove = (node: DesignNode) => !readOnly && (!node.locked || slideOnly(node));
 
   // Attach the transformer to the selected node.
   useEffect(() => {
@@ -307,6 +319,91 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
           setExporting(false);
         }
       },
+      sceneSnapshot(maxSide, standing) {
+        const stage = stageRef.current;
+        const layer = layerRef.current;
+        const tr = trRef.current;
+        if (!stage || !layer) return null;
+
+        const byId = new Map<string, Konva.Node>();
+        for (const n of doc.nodes) {
+          const k = stage.findOne((x: Konva.Node) => x.id() === n.id);
+          if (k) byId.set(n.id, k);
+        }
+        const allNodes = [...byId.values()];
+        const backgrounds = stage.find(".background");
+        const hints = stage.find(".placeholder");
+        const wasVisible = new Map<Konva.Node, boolean>(
+          [...allNodes, ...backgrounds, ...hints].map((n) => [n, n.visible()]),
+        );
+        const trVisible = tr?.visible() ?? false;
+        const ratio = maxSide / Math.max(doc.width, doc.height) / scale;
+        const standingIds = new Set(standing.flatMap((g) => g.ids));
+
+        try {
+          tr?.visible(false);
+          hints.forEach((n) => n.visible(false));
+
+          // 1) The wall: everything except what stands on the shelves.
+          for (const id of standingIds) byId.get(id)?.visible(false);
+          const texture = stage.toDataURL({ pixelRatio: ratio, mimeType: "image/jpeg", quality: 0.86 });
+
+          // 2) Each standing group alone, on transparency, without its 2D drop
+          //    shadow (the 3D scene casts real ones).
+          allNodes.forEach((n) => n.visible(false));
+          backgrounds.forEach((n) => n.visible(false));
+          const items: StandingItem3D[] = [];
+          for (const g of standing) {
+            const nodes = g.ids.map((id) => byId.get(id)).filter((n): n is Konva.Node => Boolean(n));
+            if (nodes.length === 0) continue;
+            nodes.forEach((n) => n.visible(true));
+            const shapes = nodes.flatMap((n) =>
+              n instanceof Konva.Container ? n.find<Konva.Shape>("Shape") : n instanceof Konva.Shape ? [n] : [],
+            );
+            const shadowWas = shapes.map((sh) => sh.shadowEnabled());
+            shapes.forEach((sh) => sh.shadowEnabled(false));
+
+            const rects = nodes.map((n) => n.getClientRect({ relativeTo: layer, skipShadow: true }));
+            const x0 = Math.min(...rects.map((r) => r.x));
+            const y0 = Math.min(...rects.map((r) => r.y));
+            const x1 = Math.max(...rects.map((r) => r.x + r.width));
+            const y1 = Math.max(...rects.map((r) => r.y + r.height));
+            const w = Math.max(1, x1 - x0);
+            const h = Math.max(1, y1 - y0);
+            const itemRatio = Math.min(ratio * 1.5, 1024 / (Math.max(w, h) * scale));
+            const url = stage.toDataURL({
+              x: x0 * scale,
+              y: y0 * scale,
+              width: w * scale,
+              height: h * scale,
+              pixelRatio: itemRatio,
+              mimeType: "image/png",
+            });
+
+            shapes.forEach((sh, i) => sh.shadowEnabled(shadowWas[i]));
+            nodes.forEach((n) => n.visible(false));
+            items.push({
+              url,
+              x: x0 / doc.width,
+              y: y0 / doc.height,
+              width: w / doc.width,
+              height: h / doc.height,
+              supportTop: g.supportTop / doc.height,
+              shelfIndex: g.shelfIndex,
+              level: g.level,
+              solid: g.solid,
+              edge: g.edge,
+            });
+          }
+          return { texture, shelves: detectShelves(doc), items };
+        } catch {
+          return null;
+        } finally {
+          for (const [n, v] of wasVisible) n.visible(v);
+          tr?.visible(trVisible);
+          stage.batchDraw();
+        }
+      },
       quickPreview(maxSide) {
         const stage = stageRef.current;
         const tr = trRef.current;
@@ -337,7 +434,8 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
       const node = e.target;
       const layer = node.getLayer();
       if (!layer) return;
-      const box = node.getClientRect({ relativeTo: layer });
+      const verticalOnly = Boolean((node as Konva.Node).getAttr("slideOnly"));
+      const box = node.getClientRect({ relativeTo: layer, skipShadow: true });
       const threshold = SNAP_PX / scale;
       const cx = box.x + box.width / 2;
       const cy = box.y + box.height / 2;
@@ -346,7 +444,7 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
 
       const xTargets = [doc.width / 2, 0, doc.width];
       const xEdges = [cx, box.x, box.x + box.width];
-      outerX: for (const t of xTargets) {
+      outerX: for (const t of verticalOnly ? [] : xTargets) {
         for (const edge of xEdges) {
           if (Math.abs(edge - t) < threshold) {
             node.x(node.x() + (t - edge));
@@ -355,7 +453,8 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
           }
         }
       }
-      const yTargets = [doc.height / 2, 0, doc.height];
+      // Shelf tops too, so items "click" onto a shelf (and then stand on it in 3D).
+      const yTargets = [doc.height / 2, 0, doc.height, ...detectShelves(doc).map((s) => s.y * doc.height)];
       const yEdges = [cy, box.y, box.y + box.height];
       outerY: for (const t of yTargets) {
         for (const edge of yEdges) {
@@ -368,7 +467,7 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
       }
       setGuides((g) => (g.v === v && g.h === h ? g : { v, h }));
     },
-    [doc.width, doc.height, scale],
+    [doc, scale],
   );
 
   function handleTransformEnd(node: DesignNode, e: Konva.KonvaEventObject<Event>) {
@@ -454,6 +553,15 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
                 opacity={node.opacity}
                 listening={selectable}
                 draggable={selectable && canMove(node)}
+                slideOnly={slideOnly(node)}
+                dragBoundFunc={
+                  slideOnly(node)
+                    ? (pos) => ({
+                        x: node.x * scale,
+                        y: Math.min(Math.max(pos.y, 0), Math.max(0, doc.height - node.height) * scale),
+                      })
+                    : undefined
+                }
                 onMouseDown={() => selectable && onSelect(node.id)}
                 onTouchStart={() => selectable && onSelect(node.id)}
                 onDragStart={() => onSelect(node.id)}
@@ -475,7 +583,7 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
                 }}
                 onMouseEnter={(e) => {
                   const c = e.target.getStage()?.container();
-                  if (c && selectable) c.style.cursor = canMove(node) ? "move" : "pointer";
+                  if (c && selectable) c.style.cursor = slideOnly(node) ? "ns-resize" : canMove(node) ? "move" : "pointer";
                 }}
                 onMouseLeave={(e) => {
                   const c = e.target.getStage()?.container();

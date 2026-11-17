@@ -8,6 +8,7 @@ import { Box, Loader2, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { detectShelves, type DesignDoc, type StudioKind } from "@/lib/studio/doc";
+import type { Scene3D } from "@/components/studio/three/scene";
 
 const StaticDesignPreview = dynamic(
   () => import("@/components/studio/StaticDesignPreview").then((m) => m.StaticDesignPreview),
@@ -59,13 +60,13 @@ export function TemplatePicker({
   const allSizes = useMemo(() => [...new Set(templates.map((t) => t.sizeLabel))], [templates]);
   const [sizeFilter, setSizeFilter] = useState<string | null>(null);
   const [chosen, setChosen] = useState<Record<string, string>>({});
-  const [snapshots, setSnapshots] = useState<Record<string, string>>({});
+  const [snapshots, setSnapshots] = useState<Record<string, Scene3D>>({});
   const [viewing, setViewing] = useState<PickerTemplate | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState<{ id: string; text: string } | null>(null);
 
-  const remember = useCallback((id: string, url: string) => {
-    setSnapshots((s) => (s[id] ? s : { ...s, [id]: url }));
+  const remember = useCallback((id: string, scene: Scene3D) => {
+    setSnapshots((s) => (s[id] ? s : { ...s, [id]: scene }));
   }, []);
 
   const visible = sizeFilter ? groups.filter((g) => g.sizes.some((s) => s.sizeLabel === sizeFilter)) : groups;
@@ -137,8 +138,9 @@ export function TemplatePicker({
                   <StaticDesignPreview
                     key={pick.id}
                     doc={pick.doc}
+                    kind={kind}
                     className="absolute inset-0 p-4"
-                    onSnapshot={(url) => remember(pick.id, url)}
+                    onSnapshot={(scene) => remember(pick.id, scene)}
                   />
                 ) : null}
                 <button
@@ -178,6 +180,13 @@ export function TemplatePicker({
         })}
       </div>
 
+      {viewing && viewing.doc && !snapshots[viewing.id] ? (
+        // Off-screen render to build the 3D scene for templates shown as an uploaded thumbnail.
+        <div aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 h-[600px] w-[600px]">
+          <StaticDesignPreview doc={viewing.doc} kind={kind} className="h-full w-full" onSnapshot={(scene) => remember(viewing.id, scene)} />
+        </div>
+      ) : null}
+
       {viewing ? (
         <Preview3DModal
           open
@@ -185,9 +194,10 @@ export function TemplatePicker({
           title={`${viewing.name} · ${viewing.sizeLabel}`}
           subtitle="Template preview — you'll add your own photos, names and colours in the editor."
           kind={kind}
-          textureUrl={viewing.thumbnailUrl ?? snapshots[viewing.id] ?? null}
+          textureUrl={snapshots[viewing.id]?.texture ?? (kind === "MINIATURE" ? null : viewing.thumbnailUrl)}
           aspect={viewing.width / viewing.height}
-          shelves={kind === "MINIATURE" && viewing.doc ? detectShelves(viewing.doc) : []}
+          shelves={snapshots[viewing.id]?.shelves ?? (kind === "MINIATURE" && viewing.doc ? detectShelves(viewing.doc) : [])}
+          items={snapshots[viewing.id]?.items}
           footer={
             <Button onClick={() => start(viewing)} disabled={starting !== null}>
               <Wand2 className="h-4 w-4" /> Customize this · ₹{viewing.price.toFixed(0)}

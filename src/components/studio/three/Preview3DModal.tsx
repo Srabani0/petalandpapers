@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
 import type { StudioKind } from "@/lib/studio/doc";
-import type { ShelfSpec } from "@/components/studio/three/models";
+import type { ShelfSpec, StandingItem3D } from "@/components/studio/three/scene";
 import { Viewer3D } from "@/components/studio/three/Viewer3D";
 
 export function Preview3DModal({
@@ -15,6 +15,7 @@ export function Preview3DModal({
   textureUrl,
   aspect,
   shelves,
+  items,
   footer,
 }: {
   open: boolean;
@@ -25,6 +26,7 @@ export function Preview3DModal({
   textureUrl: string | null;
   aspect: number;
   shelves: ShelfSpec[];
+  items?: StandingItem3D[];
   footer?: ReactNode;
 }) {
   useEffect(() => {
@@ -68,6 +70,7 @@ export function Preview3DModal({
           textureUrl={textureUrl}
           aspect={aspect}
           shelves={shelves}
+          items={items}
           autoRotate
           className="min-h-0 flex-1 rounded-none"
         />

@@ -185,10 +185,23 @@ export function PropertiesPanel({
             icon={node.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
             label={node.locked ? "Locked — part of the skeleton" : "Editable by customers"}
           />
+          {node.locked ? (
+            <label className="flex items-center gap-2 text-sm text-navy">
+              <input
+                type="checkbox"
+                checked={Boolean(node.slideY)}
+                onChange={(e) => onChange({ slideY: e.target.checked })}
+              />
+              Customers can slide it up / down (shelves)
+            </label>
+          ) : null}
         </Section>
       ) : isLockedForCustomer ? (
-        <p className="flex items-center gap-2 text-sm text-muted">
-          <Lock className="h-4 w-4" /> This is part of the template and can&apos;t be changed.
+        <p className="flex items-start gap-2 text-sm text-muted">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          {node.slideY
+            ? "Drag it up or down (or use the ↑ ↓ keys) to move it. Everything else about it is fixed."
+            : "This is part of the template and can't be changed."}
         </p>
       ) : null}
     </div>

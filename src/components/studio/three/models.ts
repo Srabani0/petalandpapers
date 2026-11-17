@@ -9,13 +9,8 @@ import type { StudioKind } from "@/lib/studio/doc";
  * Units are roughly metres-scaled-up; ground is y = 0, everything faces +z.
  */
 
-export interface ShelfSpec {
-  x: number; // 0–1 of design width
-  y: number; // 0–1 of design height
-  width: number;
-  height: number;
-  color: string;
-}
+import type { ShelfSpec, StandingItem3D } from "@/components/studio/three/scene";
+export type { ShelfSpec };
 
 export interface ProductModel {
   group: THREE.Group;
@@ -25,6 +20,32 @@ export interface ProductModel {
   cameraPosition: THREE.Vector3;
   /** Rough radius, used to size shadows and zoom limits. */
   radius: number;
+  /** Miniature only: the board that standing cut-outs are attached to. */
+  stage?: MiniatureStage;
+}
+
+export interface MiniatureStage {
+  board: THREE.Object3D;
+  W: number;
+  H: number;
+  D: number;
+  shelves: ShelfSpec[];
+}
+
+/** 3D thickness and depth of a shelf — shared by the shelf mesh and the items standing on it. */
+export function shelfGeometry(s: ShelfSpec, W: number, H: number) {
+  return {
+    thickness: Math.max(s.height * H, 0.022),
+    depth: Math.min(0.16, 0.09 + s.width * W * 0.03),
+  };
+}
+
+/**
+ * Where a shelf from the 2D design sits on a board whose origin is its centre:
+ * design y = 0 is the top edge (+H/2), y = 1 the bottom edge (−H/2).
+ */
+export function shelfCenter(s: Pick<ShelfSpec, "x" | "y" | "width" | "height">, W: number, H: number) {
+  return { x: -W / 2 + (s.x + s.width / 2) * W, y: H / 2 - (s.y + s.height / 2) * H };
 }
 
 // ─── Materials ─────────────────────────────────────────────────────────────
@@ -130,10 +151,10 @@ function miniature(aspect: number, shelves: ShelfSpec[]): ProductModel {
   // Real shelves: thin boards sticking out of the front, casting shadows.
   for (const s of shelves) {
     const sw = s.width * W;
-    const th = Math.max(s.height * H, 0.022);
-    const depth = Math.min(0.22, 0.12 + sw * 0.04);
+    const { thickness: th, depth } = shelfGeometry(s, W, H);
     const shelf = mesh(new THREE.BoxGeometry(sw, th, depth), plain(s.color || "#ffffff", 0.7));
-    shelf.position.set(-W / 2 + (s.x + s.width / 2) * W, H - (s.y + s.height / 2) * H, D / 2 + depth / 2);
+    const at = shelfCenter(s, W, H);
+    shelf.position.set(at.x, at.y, D / 2 + depth / 2);
     board.add(shelf);
   }
 
@@ -168,6 +189,73 @@ function miniature(aspect: number, shelves: ShelfSpec[]): ProductModel {
     target: new THREE.Vector3(0, ledgeY + H * 0.5, 0),
     cameraPosition: new THREE.Vector3(0.9, ledgeY + H * 0.62, 2.9),
     radius: Math.max(W, H) * 0.9,
+    stage: { board, W, H, D, shelves },
+  };
+}
+
+const ITEM_THICKNESS = 0.014;
+
+/**
+ * Stands each cut-out on its shelf: bottom edge on the 3D shelf's top
+ * surface, centred in the shelf's depth, casting a shadow shaped like the
+ * item itself (alpha-tested depth material). Solid items (photo frames,
+ * plates) get a slim body; stickers are thin cut-out standees.
+ */
+export function buildStandingItems(stage: MiniatureStage, items: StandingItem3D[], anisotropy: number) {
+  const group = new THREE.Group();
+  const textures: THREE.Texture[] = [];
+  const depthMaterials: THREE.Material[] = [];
+  const loader = new THREE.TextureLoader();
+  const { W, H, D, shelves } = stage;
+
+  for (const item of items) {
+    const shelf = shelves[item.shelfIndex];
+    if (!shelf) continue;
+    const { thickness, depth } = shelfGeometry(shelf, W, H);
+    // The 3D shelf may be a little thicker than the drawn one; lift items by
+    // the same amount so they sit exactly on its top surface.
+    const shelfTop3D = shelfCenter(shelf, W, H).y + thickness / 2;
+    const lift = shelfTop3D - (H / 2 - shelf.y * H);
+
+    const w = item.width * W;
+    const h = item.height * H;
+    const bottom = H / 2 - item.supportTop * H + lift;
+    const cx = -W / 2 + (item.x + item.width / 2) * W;
+    const z = D / 2 + depth * (item.level === 0 ? 0.45 : 0.42);
+
+    const tex = loader.load(item.url);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = anisotropy;
+    textures.push(tex);
+
+    const face = new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.35, roughness: 0.55 });
+    const depthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.35 });
+
+    let obj: THREE.Mesh;
+    if (item.solid) {
+      const edge = plain(item.edge || "#ffffff", 0.6);
+      obj = mesh(new THREE.BoxGeometry(w, h, ITEM_THICKNESS), [edge, edge, edge, edge, face, edge]);
+      obj.position.set(cx, bottom + h / 2, z + ITEM_THICKNESS / 2);
+    } else {
+      face.side = THREE.DoubleSide;
+      obj = mesh(new THREE.PlaneGeometry(w, h), face);
+      obj.customDepthMaterial = depthMat;
+      depthMaterials.push(depthMat);
+      obj.position.set(cx, bottom + h / 2, z);
+    }
+    if (item.solid) depthMat.dispose();
+    group.add(obj);
+  }
+
+  stage.board.add(group);
+  return {
+    group,
+    dispose() {
+      stage.board.remove(group);
+      disposeObject(group);
+      for (const t of textures) t.dispose();
+      for (const m of depthMaterials) m.dispose();
+    },
   };
 }
 

@@ -7,7 +7,14 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { RotateCw, Pause, Undo2, FlipHorizontal2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StudioKind } from "@/lib/studio/doc";
-import { buildModel, disposeObject, type ShelfSpec } from "@/components/studio/three/models";
+import {
+  buildModel,
+  buildStandingItems,
+  disposeObject,
+  type MiniatureStage,
+  type ShelfSpec,
+} from "@/components/studio/three/models";
+import type { StandingItem3D } from "@/components/studio/three/scene";
 
 interface Props {
   kind: StudioKind;
@@ -16,6 +23,8 @@ interface Props {
   /** Design width ÷ height. */
   aspect: number;
   shelves?: ShelfSpec[];
+  /** Cut-outs that stand on the shelves (3D miniatures). */
+  items?: StandingItem3D[];
   className?: string;
   /** Compact = no on-screen controls (side-panel thumbnail). */
   compact?: boolean;
@@ -30,6 +39,8 @@ type Ctx = {
   home: THREE.Vector3;
   target: THREE.Vector3;
   flyTo: THREE.Vector3 | null;
+  stage?: MiniatureStage;
+  standing?: { dispose(): void };
 };
 
 /**
@@ -37,7 +48,18 @@ type Ctx = {
  * physically-based materials, studio reflections, soft contact shadow.
  * Drag to orbit all the way round (see the back), scroll/pinch to zoom.
  */
-export function Viewer3D({ kind, textureUrl, aspect, shelves = [], className, compact = false, autoRotate = false }: Props) {
+const NO_ITEMS: StandingItem3D[] = [];
+
+export function Viewer3D({
+  kind,
+  textureUrl,
+  aspect,
+  shelves = [],
+  items = NO_ITEMS,
+  className,
+  compact = false,
+  autoRotate = false,
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const ctxRef = useRef<Ctx | null>(null);
   const [failed, setFailed] = useState(false);
@@ -122,6 +144,7 @@ export function Viewer3D({ kind, textureUrl, aspect, shelves = [], className, co
       home: model.cameraPosition.clone(),
       target: model.target.clone(),
       flyTo: null,
+      stage: model.stage,
     };
     ctxRef.current = ctx;
 
@@ -200,6 +223,18 @@ export function Viewer3D({ kind, textureUrl, aspect, shelves = [], className, co
       cancelled = true;
     };
   }, [textureUrl, kind, aspect, shelvesKey]);
+
+  // ── Items standing on the shelves (rebuilt whenever the design changes) ─
+  useEffect(() => {
+    const ctx = ctxRef.current;
+    if (!ctx?.stage || items.length === 0) return;
+    const built = buildStandingItems(ctx.stage, items, ctx.renderer.capabilities.getMaxAnisotropy());
+    ctx.standing = built;
+    return () => {
+      built.dispose();
+      if (ctx.standing === built) ctx.standing = undefined;
+    };
+  }, [items, kind, aspect, shelvesKey]);
 
   useEffect(() => {
     if (ctxRef.current) ctxRef.current.controls.autoRotate = spinning;

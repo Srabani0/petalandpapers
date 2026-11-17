@@ -68,6 +68,7 @@ export function buildStarter(key: StarterKey, width: number, height: number): De
           cornerRadius: 2,
           shadow: true,
           locked: true,
+          slideY: true,
         }),
       );
 

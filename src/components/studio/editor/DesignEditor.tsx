@@ -7,6 +7,7 @@ import { compressImage } from "@/lib/image-compress";
 import {
   MAX_UPLOADS,
   cloneNode,
+  analyzeShelfScene,
   detectShelves,
   emptyPhotoSlots,
   makeImage,
@@ -25,7 +26,7 @@ import { Sidebar, type ShapePreset, type StudioElement, type TextPreset } from "
 import { PropertiesPanel } from "@/components/studio/editor/PropertiesPanel";
 import { Viewer3D } from "@/components/studio/three/Viewer3D";
 import { Preview3DModal } from "@/components/studio/three/Preview3DModal";
-import type { ShelfSpec } from "@/components/studio/three/models";
+import { EMPTY_SCENE, type Scene3D } from "@/components/studio/three/scene";
 import { imageNaturalSize } from "@/components/studio/editor/images";
 
 export interface EditorApi {
@@ -94,8 +95,8 @@ export function DesignEditor({
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   // Live 3D preview: refreshed shortly after each edit (texture + shelf positions).
-  const [live3D, setLive3D] = useState<{ texture: string | null; shelves: ShelfSpec[] }>({ texture: null, shelves: [] });
-  const [modal3D, setModal3D] = useState<(Show3DOptions & { texture: string | null; shelves: ShelfSpec[] }) | null>(null);
+  const [live3D, setLive3D] = useState<Scene3D>(EMPTY_SCENE);
+  const [modal3D, setModal3D] = useState<(Show3DOptions & Scene3D) | null>(null);
 
   useEffect(() => {
     latest.current = { doc, revision };
@@ -142,27 +143,29 @@ export function DesignEditor({
   }, [dirty, readOnly]);
 
   // ── Live 3D preview ──────────────────────────────────────────────────────
+  /** Wall print + shelves + the cut-outs that stand on them (miniatures). */
+  const takeScene = useCallback(
+    (d: DesignDoc, maxSide: number): Scene3D => {
+      if (!canvas) return EMPTY_SCENE;
+      if (kind === "MINIATURE") {
+        const scene = canvas.sceneSnapshot(maxSide, analyzeShelfScene(d));
+        if (scene) return scene;
+      }
+      return { texture: canvas.quickPreview(maxSide), shelves: kind === "MINIATURE" ? detectShelves(d) : [], items: [] };
+    },
+    [canvas, kind],
+  );
+
   useEffect(() => {
     if (!canvas || !scale || modal3D) return;
-    const t = setTimeout(() => {
-      setLive3D({
-        texture: canvas.quickPreview(1400),
-        shelves: kind === "MINIATURE" ? detectShelves(latest.current.doc) : [],
-      });
-    }, 600);
+    const t = setTimeout(() => setLive3D(takeScene(latest.current.doc, 1400)), 600);
     return () => clearTimeout(t);
-  }, [canvas, kind, revision, scale, modal3D]);
+  }, [canvas, revision, scale, modal3D, takeScene]);
 
   const show3D = useCallback(
-    (opts: Show3DOptions = {}) => {
-      // High-resolution snapshot for the big viewer.
-      setModal3D({
-        ...opts,
-        texture: canvas?.quickPreview(2048) ?? null,
-        shelves: kind === "MINIATURE" ? detectShelves(doc) : [],
-      });
-    },
-    [canvas, kind, doc],
+    // High-resolution snapshot for the big viewer.
+    (opts: Show3DOptions = {}) => setModal3D({ ...opts, ...takeScene(doc, 2048) }),
+    [doc, takeScene],
   );
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -390,7 +393,16 @@ export function DesignEditor({
         return;
       }
       if (e.key === "Escape") return select(null);
-      if (!selected || !isEditable(selected)) return;
+      if (!selected) return;
+      // Sliding shelves: arrow up/down only, even though they are locked.
+      if (selected.locked && selected.slideY && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault();
+        const dy = (e.key === "ArrowUp" ? -1 : 1) * (e.shiftKey ? 10 : 1);
+        const y = Math.min(Math.max(selected.y + dy, 0), Math.max(0, doc.height - selected.height));
+        updateNode(selected.id, { y }, "nudge");
+        return;
+      }
+      if (!isEditable(selected)) return;
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         deleteSelected();
@@ -411,7 +423,7 @@ export function DesignEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, duplicateSelected, isEditable, readOnly, select, selected, state, updateNode]);
+  }, [deleteSelected, doc.height, duplicateSelected, isEditable, readOnly, select, selected, state, updateNode]);
 
   // ── API for page-level actions ───────────────────────────────────────────
   const api: EditorApi = {
@@ -584,6 +596,7 @@ export function DesignEditor({
                 textureUrl={live3D.texture}
                 aspect={doc.width / doc.height}
                 shelves={live3D.shelves}
+                items={live3D.items}
                 className="h-[220px]"
               />
             )}
@@ -616,6 +629,7 @@ export function DesignEditor({
         textureUrl={modal3D?.texture ?? null}
         aspect={doc.width / doc.height}
         shelves={modal3D?.shelves ?? []}
+        items={modal3D?.items}
         footer={modal3D?.footer?.(() => setModal3D(null))}
       />
     </div>

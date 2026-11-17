@@ -51,6 +51,8 @@ const base = {
   opacity: z.number().min(0).max(1),
   locked: z.boolean(),
   shadow: z.boolean(),
+  /** Locked, but customers may still slide it up/down (e.g. shelves). */
+  slideY: z.boolean().optional(),
   name: z.string().max(60).optional(),
 };
 
@@ -319,14 +321,17 @@ export const STUDIO_KIND_LABEL: Record<StudioKind, string> = {
  * Wide, thin rectangles (or anything named "Shelf…") are shelves: the 3D
  * preview extrudes them into real ledges that stick out of the board.
  */
+function isShelfNode(doc: DesignDoc, n: DesignNode): n is ShapeNode {
+  return (
+    n.type === "rect" &&
+    Math.abs(n.rotation) < 1 &&
+    (/shelf/i.test(n.name ?? "") || (n.width >= doc.width * 0.45 && n.height <= doc.height * 0.04))
+  );
+}
+
 export function detectShelves(doc: DesignDoc) {
   return doc.nodes
-    .filter(
-      (n): n is ShapeNode =>
-        n.type === "rect" &&
-        Math.abs(n.rotation) < 1 &&
-        (/shelf/i.test(n.name ?? "") || (n.width >= doc.width * 0.45 && n.height <= doc.height * 0.04)),
-    )
+    .filter((n): n is ShapeNode => isShelfNode(doc, n))
     .map((n) => ({
       x: n.x / doc.width,
       y: n.y / doc.height,
@@ -334,4 +339,113 @@ export function detectShelves(doc: DesignDoc) {
       height: n.height / doc.height,
       color: n.fill,
     }));
+}
+
+/** A set of elements that physically stand on a shelf (or on another standing item). */
+export interface StandingGroup {
+  /** Base element first, then anything drawn on top of it (e.g. the name on a name plate). */
+  ids: string[];
+  /** Index into detectShelves(doc). */
+  shelfIndex: number;
+  /** 0 = stands on the shelf, 1 = stands on top of another standing item. */
+  level: 0 | 1;
+  /** Design-pixel y of the surface it stands on (shelf top, or the top of the item below). */
+  supportTop: number;
+  /** Rectangular objects (photo frames, plates) get real thickness in 3D. */
+  solid: boolean;
+  /** Colour for the edges of solid objects. */
+  edge: string;
+}
+
+/** Approximate rendered height of a text box (stored height isn't kept in sync with wrapping). */
+function nodeHeight(n: DesignNode) {
+  if (n.type !== "text") return n.height;
+  const lines = Math.max(1, n.text.split("\n").length);
+  return Math.max(n.height, n.fontSize * n.lineHeight * lines);
+}
+
+/**
+ * Works out which elements of a 3D-miniature design are *standing* — resting
+ * on a shelf, or stacked on something that is — versus stuck flat on the
+ * wall. The 3D preview cuts standing groups out and stands them up on the
+ * shelves; everything else stays printed on the board.
+ */
+export function analyzeShelfScene(doc: DesignDoc): StandingGroup[] {
+  const shelves = doc.nodes.filter((n): n is ShapeNode => isShelfNode(doc, n));
+  if (shelves.length === 0) return [];
+  // Items are placed by eye — be forgiving about a small gap or overlap.
+  const tol = Math.max(8, doc.height * 0.018);
+  const order = new Map(doc.nodes.map((n, i) => [n.id, i]));
+  const overlapX = (a: DesignNode, b: { x: number; width: number }) =>
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+
+  // Things that can stand: not text, not the shelves, roughly upright, not
+  // wall-sized panels.
+  const candidates = doc.nodes.filter(
+    (n) =>
+      n.type !== "text" &&
+      !isShelfNode(doc, n) &&
+      Math.abs(n.rotation) < 4 &&
+      n.height < doc.height * 0.6 &&
+      n.width < doc.width * 0.9,
+  );
+
+  const groups: StandingGroup[] = [];
+  const used = new Set<string>();
+  const solidOf = (n: DesignNode) => n.type === "photo" || n.type === "rect";
+  const edgeOf = (n: DesignNode) =>
+    n.type === "photo" ? (n.strokeWidth > 0 ? n.stroke : n.fill) : n.type === "rect" ? (n.strokeWidth > 0 ? n.stroke : n.fill) : "#ffffff";
+
+  // Level 0: bottom edge touches a shelf.
+  for (const n of candidates) {
+    const bottom = n.y + n.height;
+    const shelfIndex = shelves.findIndex(
+      (sh) => overlapX(n, sh) > Math.min(n.width, sh.width) * 0.3 && bottom >= sh.y - tol && bottom <= sh.y + sh.height + tol / 2,
+    );
+    if (shelfIndex === -1) continue;
+    groups.push({ ids: [n.id], shelfIndex, level: 0, supportTop: shelves[shelfIndex].y, solid: solidOf(n), edge: edgeOf(n) });
+    used.add(n.id);
+  }
+
+  // Level 1: resting on top of a level-0 item (e.g. a smiley on a stack of books).
+  const bases = groups.map((g) => ({ g, node: doc.nodes.find((n) => n.id === g.ids[0])! }));
+  for (const n of candidates) {
+    if (used.has(n.id)) continue;
+    const bottom = n.y + n.height;
+    const below = bases.find(
+      ({ node }) => overlapX(n, node) > Math.min(n.width, node.width) * 0.3 && Math.abs(bottom - node.y) <= tol,
+    );
+    if (!below) continue;
+    groups.push({
+      ids: [n.id],
+      shelfIndex: below.g.shelfIndex,
+      level: 1,
+      supportTop: below.node.y,
+      solid: solidOf(n),
+      edge: edgeOf(n),
+    });
+    used.add(n.id);
+  }
+
+  // Overlays: anything drawn above a standing item and lying entirely within
+  // it travels with it (text on a name plate, a sticker on a frame).
+  const standingNodes = groups.map((g) => ({ g, node: doc.nodes.find((n) => n.id === g.ids[0])! }));
+  for (const m of doc.nodes) {
+    if (used.has(m.id) || isShelfNode(doc, m)) continue;
+    const mh = nodeHeight(m);
+    const host = standingNodes.find(
+      ({ node }) =>
+        (order.get(m.id) ?? 0) > (order.get(node.id) ?? 0) &&
+        m.x >= node.x - tol &&
+        m.x + m.width <= node.x + node.width + tol &&
+        m.y >= node.y - tol &&
+        m.y + mh <= node.y + node.height + tol,
+    );
+    if (!host) continue;
+    host.g.ids.push(m.id);
+    used.add(m.id);
+  }
+
+  for (const g of groups) g.ids.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+  return groups;
 }
