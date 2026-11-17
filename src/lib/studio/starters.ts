@@ -7,6 +7,7 @@ import {
   type DesignNode,
   type StudioKind,
 } from "@/lib/studio/doc";
+import { FLORAL_STARTERS, buildFloral, type FloralStarter } from "@/lib/studio/floral-starters";
 
 /**
  * Built-in starting layouts ("skeletons"). Everything is expressed as
@@ -23,6 +24,10 @@ export const STARTERS = [
   { key: "single", label: "Photo frame · single photo + caption" },
   { key: "collage", label: "Photo frame · 4-photo collage" },
   { key: "polaroid", label: "Photo frame · polaroid memories" },
+  { key: "floralSunflower", label: "Pipe-cleaner frame · sunflower garden" },
+  { key: "floralPastel", label: "Pipe-cleaner frame · pastel daisies" },
+  { key: "floralRose", label: "Pipe-cleaner frame · roses & hearts" },
+  { key: "floralGarland", label: "Pipe-cleaner frame · spring garland" },
   { key: "mug", label: "Mug · photo + messages" },
   { key: "mugStrip", label: "Mug · photo strip" },
   { key: "mugName", label: "Mug · name & quote" },
@@ -453,6 +458,9 @@ export function buildStarter(key: StarterKey, width: number, height: number): De
       }),
     );
   }
+
+  // ── Pipe-cleaner floral frames ─────────────────────────────────────────
+  if ((FLORAL_STARTERS as readonly string[]).includes(key)) nodes.push(...buildFloral(key as FloralStarter, doc));
 
   doc.nodes = nodes;
   return doc;

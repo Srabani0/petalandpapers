@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "db:seed:studio": "tsx prisma/seed-studio.ts",
     "studio:library": "tsx scripts/studio-library/generate.ts",
-    "studio:library:3d": "tsx scripts/studio-library/fluent3d.ts"
+    "studio:library:3d": "tsx scripts/studio-library/fluent3d.ts",
+    "studio:library:chenille": "tsx scripts/studio-library/pipecleaner.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

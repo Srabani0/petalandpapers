@@ -668,6 +668,10 @@ export const STUDIO_SEED = [
       { name: "Single Photo Frame", starter: "single" as const, sizes: [["6x8", 499], ["8x10", 699], ["12x16", 999]] },
       { name: "Four Photo Collage", starter: "collage" as const, sizes: [["8x10", 799], ["12x16", 1149]] },
       { name: "Polaroid Memories", starter: "polaroid" as const, sizes: [["square8", 749], ["landscape", 849]] },
+      { name: "Sunflower Pipe-Cleaner Frame", starter: "floralSunflower" as const, sizes: [["6x8", 699], ["8x10", 899], ["12x16", 1299]] },
+      { name: "Pastel Daisy Pipe-Cleaner Frame", starter: "floralPastel" as const, sizes: [["6x8", 699], ["8x10", 899], ["12x16", 1299]] },
+      { name: "Roses & Hearts Pipe-Cleaner Frame", starter: "floralRose" as const, sizes: [["6x8", 749], ["8x10", 949], ["12x16", 1349]] },
+      { name: "Spring Garland Pipe-Cleaner Frame", starter: "floralGarland" as const, sizes: [["6x8", 699], ["8x10", 899], ["12x16", 1299]] },
     ],
   },
   {

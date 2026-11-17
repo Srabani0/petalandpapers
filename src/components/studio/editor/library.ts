@@ -28,13 +28,15 @@ let cached: Promise<Library> | null = null;
 export function loadLibrary(): Promise<Library> {
   if (!cached) {
     const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
+    // Extra sticker sets are optional — the pastel set works alone.
+    const extra = (url: string) => (json(url) as Promise<{ stickers: LibraryItem[] }>).catch(() => ({ stickers: [] as LibraryItem[] }));
     cached = Promise.all([
+      extra("/studio/library/manifest-chenille.json"), // handmade pipe-cleaner pieces
       json("/studio/library/manifest.json") as Promise<{ stickers: LibraryItem[]; backgrounds: LibraryItem[] }>,
-      // Realistic 3D stickers (Fluent Emoji, MIT) — optional; the pastel set works alone.
-      (json("/studio/library/manifest-3d.json") as Promise<{ stickers: LibraryItem[] }>).catch(() => ({ stickers: [] as LibraryItem[] })),
+      extra("/studio/library/manifest-3d.json"), // realistic 3D (Fluent Emoji, MIT)
     ])
-      .then(([m, m3d]) => {
-        const stickers = [...m.stickers, ...m3d.stickers];
+      .then(([chenille, m, m3d]) => {
+        const stickers = [...chenille.stickers, ...m.stickers, ...m3d.stickers];
         return {
           stickers,
           backgrounds: m.backgrounds,
