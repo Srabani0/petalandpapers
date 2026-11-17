@@ -151,6 +151,7 @@ function PhotoContent({ node, editable }: { node: PhotoNode; editable: boolean }
             <Rect x={inner.x} y={inner.y} width={inner.w} height={inner.h} fill="#e9ebf2" />
             {editable ? (
               <KText
+                name="placeholder"
                 x={inner.x}
                 y={inner.y + inner.h / 2 - labelSize * 1.1}
                 width={inner.w}
@@ -314,6 +315,8 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
         // draw — the browser never paints the hidden state, so no flicker.
         const trVisible = tr?.visible() ?? false;
         tr?.visible(false);
+        const hints = stage.find(".placeholder");
+        hints.forEach((n) => n.visible(false));
         try {
           const target = maxSide / Math.max(doc.width, doc.height);
           return stage.toDataURL({ pixelRatio: target / scale, mimeType: "image/jpeg", quality: 0.8 });
@@ -321,6 +324,7 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
           return null; // e.g. an image without CORS headers tainted the canvas
         } finally {
           tr?.visible(trVisible);
+          hints.forEach((n) => n.visible(true));
           stage.batchDraw();
         }
       },

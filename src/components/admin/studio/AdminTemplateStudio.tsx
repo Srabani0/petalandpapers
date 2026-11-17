@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, FieldError, FieldHint } from "@/components/ui/Input";
-import { SIZE_PRESETS, type DesignDoc } from "@/lib/studio/doc";
-import { STARTERS, buildStarter, type StarterKey } from "@/lib/studio/starters";
+import { SIZE_PRESETS, type DesignDoc, type StudioKind } from "@/lib/studio/doc";
+import { DEFAULT_STARTER, STARTERS, buildStarter, type StarterKey } from "@/lib/studio/starters";
 import type { StudioElement } from "@/components/studio/editor/Sidebar";
 import type { EditorApi } from "@/components/studio/editor/DesignEditor";
 import { describeExportError } from "@/components/studio/render";
@@ -47,7 +47,7 @@ export function AdminTemplateStudio({
   templateId: string | null;
   categoryId: string;
   categoryName: string;
-  kind: "STANDARD" | "MUG";
+  kind: StudioKind;
   elements: StudioElement[];
   initialMeta: TemplateMeta;
   initialDoc: DesignDoc | null;
@@ -214,7 +214,7 @@ function SetupStep({
   meta,
   onStart,
 }: {
-  kind: "STANDARD" | "MUG";
+  kind: StudioKind;
   categoryName: string;
   backHref: string;
   meta: TemplateMeta;
@@ -225,7 +225,7 @@ function SetupStep({
   const [name, setName] = useState(meta.name);
   const [price, setPrice] = useState(meta.price);
   const [custom, setCustom] = useState({ width: 1000, height: 1200, label: "Custom size" });
-  const [starter, setStarter] = useState<StarterKey>(kind === "MUG" ? "mug" : "shelves3");
+  const [starter, setStarter] = useState<StarterKey>(DEFAULT_STARTER[kind]);
   const [error, setError] = useState<string | null>(null);
 
   function start() {

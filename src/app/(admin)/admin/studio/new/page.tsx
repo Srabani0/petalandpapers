@@ -29,7 +29,7 @@ export default async function NewStudioCategoryPage() {
             slug: "",
             description: "",
             coverImageUrl: "",
-            kind: "STANDARD",
+            kind: "MINIATURE",
             productId: "",
             isActive: true,
             sortOrder: 0,

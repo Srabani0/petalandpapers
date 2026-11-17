@@ -6,6 +6,7 @@ import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Textarea, FieldError, FieldHint } from "@/components/ui/Input";
 import { SingleImageUpload } from "@/components/admin/SingleImageUpload";
+import { STUDIO_KINDS, STUDIO_KIND_LABEL, type StudioKind } from "@/lib/studio/doc";
 
 export interface StudioCategoryValues {
   id?: string;
@@ -13,7 +14,7 @@ export interface StudioCategoryValues {
   slug: string;
   description: string;
   coverImageUrl: string;
-  kind: "STANDARD" | "MUG";
+  kind: StudioKind;
   productId: string;
   isActive: boolean;
   sortOrder: number;
@@ -126,16 +127,20 @@ export function StudioCategoryForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <Label htmlFor="sc-kind">Type</Label>
+          <Label htmlFor="sc-kind">Product shape (3D preview)</Label>
           <select
             id="sc-kind"
             value={values.kind}
-            onChange={(e) => set("kind", e.target.value as "STANDARD" | "MUG")}
+            onChange={(e) => set("kind", e.target.value as StudioKind)}
             className={selectClasses}
           >
-            <option value="STANDARD">Standard (miniatures, frames, scrapbooks…)</option>
-            <option value="MUG">Mug — shows a 3D mug preview</option>
+            {STUDIO_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {STUDIO_KIND_LABEL[k]}
+              </option>
+            ))}
           </select>
+          <FieldHint>Decides which realistic 3D model customers see their design on.</FieldHint>
         </div>
         <div>
           <Label htmlFor="sc-product">Ordered as product</Label>

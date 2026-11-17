@@ -593,6 +593,9 @@ model FounderStory {
 enum DesignCategoryKind {
   STANDARD
   MUG
+  MINIATURE
+  FRAME
+  CARD
 }
 
 enum DesignStatus {

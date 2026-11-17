@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="180" viewBox="0 0 220 180"><path d="M110 90 q-40 -80 -90 -60 q-20 40 30 70 q-40 20 -20 60 q40 10 80 -70z" fill="#7e57c2"/>
+      <path d="M110 90 q40 -80 90 -60 q20 40 -30 70 q40 20 20 60 q-40 10 -80 -70z" fill="#9575cd"/>
+      <circle cx="58" cy="60" r="10" fill="#fff" opacity=".6"/><circle cx="162" cy="60" r="10" fill="#fff" opacity=".6"/>
+      <rect x="105" y="50" width="10" height="90" rx="5" fill="#311b92"/><path d="M110 52 q-10 -26 -24 -30 M110 52 q10 -26 24 -30" stroke="#311b92" stroke-width="3" fill="none"/></svg>

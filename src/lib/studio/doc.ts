@@ -149,6 +149,8 @@ export const SIZE_PRESETS = [
   { key: "12x16", label: "XL · 12 × 16 in", width: 1200, height: 1600 },
   { key: "square8", label: "Square · 8 × 8 in", width: 1200, height: 1200 },
   { key: "landscape", label: "Landscape · 10 × 8 in", width: 1200, height: 960 },
+  { key: "card4x6", label: "Card · 4 × 6 in", width: 800, height: 1200 },
+  { key: "card5x7", label: "Card · 5 × 7 in", width: 1000, height: 1400 },
   { key: "mug11", label: "Mug wrap · 11 oz", width: 2300, height: 950 },
   { key: "mug15", label: "Mug wrap · 15 oz", width: 2400, height: 1080 },
 ] as const;
@@ -298,4 +300,38 @@ export function docImageUrls(doc: DesignDoc): string[] {
 /** Number of photo frames still waiting for a picture. */
 export function emptyPhotoSlots(doc: DesignDoc) {
   return doc.nodes.filter((n) => n.type === "photo" && !n.src).length;
+}
+
+// ─── Product kinds (drive the 3D preview model) ───────────────────────────
+
+export const STUDIO_KINDS = ["MINIATURE", "MUG", "FRAME", "CARD", "STANDARD"] as const;
+export type StudioKind = (typeof STUDIO_KINDS)[number];
+
+export const STUDIO_KIND_LABEL: Record<StudioKind, string> = {
+  MINIATURE: "3D miniature — board on an easel with real shelves",
+  MUG: "Mug — design wraps around a ceramic mug",
+  FRAME: "Photo frame — print behind glass in a wooden frame",
+  CARD: "Card — standing card / bouquet message card",
+  STANDARD: "Flat board — generic standing print",
+};
+
+/**
+ * Wide, thin rectangles (or anything named "Shelf…") are shelves: the 3D
+ * preview extrudes them into real ledges that stick out of the board.
+ */
+export function detectShelves(doc: DesignDoc) {
+  return doc.nodes
+    .filter(
+      (n): n is ShapeNode =>
+        n.type === "rect" &&
+        Math.abs(n.rotation) < 1 &&
+        (/shelf/i.test(n.name ?? "") || (n.width >= doc.width * 0.45 && n.height <= doc.height * 0.04)),
+    )
+    .map((n) => ({
+      x: n.x / doc.width,
+      y: n.y / doc.height,
+      width: n.width / doc.width,
+      height: n.height / doc.height,
+      color: n.fill,
+    }));
 }

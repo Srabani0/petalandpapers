@@ -23,8 +23,8 @@ export async function listStudioCategories() {
     include: {
       templates: {
         where: { isActive: true },
-        select: { price: true, thumbnailUrl: true },
-        orderBy: { sortOrder: "asc" },
+        select: { price: true, thumbnailUrl: true, canvas: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       },
     },
   });
@@ -38,6 +38,8 @@ export async function listStudioCategories() {
       description: c.description,
       kind: c.kind,
       coverImageUrl: c.coverImageUrl ?? c.templates.find((t) => t.thumbnailUrl)?.thumbnailUrl ?? null,
+      // Live-rendered cover when no image has been uploaded yet.
+      coverCanvas: c.templates[0]?.canvas ?? null,
       templateCount: c.templates.length,
       startingPrice: Math.min(...c.templates.map((t) => Number(t.price))),
     }));
@@ -59,6 +61,7 @@ export async function getStudioCategory(slug: string) {
           height: true,
           price: true,
           thumbnailUrl: true,
+          canvas: true,
         },
       },
     },

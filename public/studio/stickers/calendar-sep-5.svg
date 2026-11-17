@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="220" viewBox="0 0 200 220"><rect x="10" y="20" width="180" height="190" rx="14" fill="#fff" stroke="#ddd" stroke-width="4"/>
+      <path d="M10 34 q0 -14 14 -14 h152 q14 0 14 14 v44 h-180z" fill="#e53935"/>
+      <text x="100" y="66" text-anchor="middle" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="34" fill="#fff">SEP</text>
+      <text x="100" y="180" text-anchor="middle" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="98" fill="#222">5</text>
+      <rect x="44" y="6" width="12" height="30" rx="6" fill="#555"/><rect x="144" y="6" width="12" height="30" rx="6" fill="#555"/></svg>

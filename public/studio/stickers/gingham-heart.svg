@@ -1,0 +1,2 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="180" viewBox="0 0 200 180"><defs><pattern id="p" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#dfe8f5"/><rect width="10" height="20" fill="#9fb6d6" opacity=".6"/><rect width="20" height="10" fill="#9fb6d6" opacity=".6"/></pattern></defs>
+      <path d="M100 170 C20 110 0 70 20 40 C40 10 85 12 100 45 C115 12 160 10 180 40 C200 70 180 110 100 170z" fill="url(#p)" stroke="#7d93b5" stroke-width="3"/></svg>

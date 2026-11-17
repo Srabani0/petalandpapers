@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STUDIO_KINDS } from "@/lib/studio/doc";
 
 const cloudinaryUrl = z
   .string()
@@ -22,7 +23,7 @@ export const studioCategorySchema = z.object({
     .or(z.literal("")),
   description: z.string().trim().max(600).optional().or(z.literal("")),
   coverImageUrl: cloudinaryUrl.optional().or(z.literal("")),
-  kind: z.enum(["STANDARD", "MUG"]),
+  kind: z.enum(STUDIO_KINDS),
   productId: z.string().trim().min(1, "Choose the product this category is ordered as"),
   isActive: z.boolean(),
   sortOrder: z.coerce.number().int().min(0).max(9999),

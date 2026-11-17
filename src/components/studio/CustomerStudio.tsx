@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Copy, Loader2, Save, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import type { DesignDoc } from "@/lib/studio/doc";
+import type { DesignDoc, StudioKind } from "@/lib/studio/doc";
 import type { StudioElement } from "@/components/studio/editor/Sidebar";
 import type { EditorApi } from "@/components/studio/editor/DesignEditor";
 import { describeExportError, renderDesignFiles } from "@/components/studio/render";
@@ -37,7 +37,7 @@ export function CustomerStudio({
   designId: string;
   initialDoc: DesignDoc;
   elements: StudioElement[];
-  kind: "STANDARD" | "MUG";
+  kind: StudioKind;
   templateName: string;
   sizeLabel: string;
   price: number;
@@ -48,7 +48,6 @@ export function CustomerStudio({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<null | "save" | "cart" | "copy">(null);
-  const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [isInCart, setIsInCart] = useState(inCart);
 
   async function save(api: EditorApi): Promise<boolean> {
@@ -85,43 +84,23 @@ export function CustomerStudio({
     }
   }
 
-  async function handleSave(api: EditorApi) {
-    setBusy("save");
-    const ok = await save(api);
-    setBusy(null);
-    if (ok) api.notify("success", isInCart ? "Saved — your cart has the latest version." : "Design saved.");
-  }
-
-  async function handleAddToCart(api: EditorApi, force = false) {
-    if (!force && api.emptySlots > 0) {
-      setConfirmEmpty(true);
-      return;
-    }
-    setConfirmEmpty(false);
+  async function addToCart(api: EditorApi, close: () => void) {
     setBusy("cart");
-    const ok = await save(api);
-    if (!ok) {
-      setBusy(null);
-      return;
-    }
-    if (isInCart) {
-      setBusy(null);
-      router.push("/cart");
-      router.refresh();
-      return;
-    }
     try {
-      const res = await fetch(`/api/studio/designs/${designId}/cart`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ quantity: 1 }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        api.notify("error", data.error ?? "Couldn't add to cart.");
-        return;
+      if (!isInCart) {
+        const res = await fetch(`/api/studio/designs/${designId}/cart`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ quantity: 1 }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          api.notify("error", data.error ?? "Couldn't add to cart.");
+          return;
+        }
+        setIsInCart(true);
       }
-      setIsInCart(true);
+      close();
       router.push("/cart");
       router.refresh();
     } catch {
@@ -129,6 +108,61 @@ export function CustomerStudio({
     } finally {
       setBusy(null);
     }
+  }
+
+  function emptyWarning(api: EditorApi) {
+    return api.emptySlots > 0 ? (
+      <span className="text-warning">
+        {api.emptySlots} photo frame{api.emptySlots === 1 ? " is" : "s are"} still empty and will be printed blank.
+      </span>
+    ) : (
+      "Drag to turn it around and check the back. This is how we'll make it."
+    );
+  }
+
+  async function handleSave(api: EditorApi) {
+    setBusy("save");
+    const ok = await save(api);
+    setBusy(null);
+    if (!ok) return;
+    api.show3D({
+      title: "Saved! Here's how it will look",
+      subtitle: emptyWarning(api),
+      footer: (close) => (
+        <>
+          <Button variant="ghost" onClick={close}>
+            Keep editing
+          </Button>
+          <Button onClick={() => addToCart(api, close)} disabled={busy !== null}>
+            <ShoppingBag className="h-4 w-4" />
+            {isInCart ? "Go to cart" : `Add to cart · ₹${price.toFixed(0)}`}
+          </Button>
+        </>
+      ),
+    });
+  }
+
+  /** Saves, then shows the final 3D look and asks for confirmation before adding. */
+  async function handleAddToCart(api: EditorApi) {
+    setBusy("cart");
+    const ok = api.dirty || !inCart ? await save(api) : true;
+    setBusy(null);
+    if (!ok) return;
+    api.show3D({
+      title: "Your finished piece",
+      subtitle: emptyWarning(api),
+      footer: (close) => (
+        <>
+          <Button variant="ghost" onClick={close}>
+            Keep editing
+          </Button>
+          <Button onClick={() => addToCart(api, close)}>
+            <ShoppingBag className="h-4 w-4" />
+            {isInCart ? "Looks good — view cart" : `Looks good — add to cart · ₹${price.toFixed(0)}`}
+          </Button>
+        </>
+      ),
+    });
   }
 
   async function handleCopy(api: EditorApi) {
@@ -193,26 +227,7 @@ export function CustomerStudio({
               {isInCart ? "Update & view cart" : "Add to cart"}
             </Button>
 
-            {confirmEmpty ? (
-              <div
-                role="alertdialog"
-                aria-label="Empty photo frames"
-                className="absolute top-full right-0 z-30 mt-2 w-72 rounded-xl border border-border bg-paper p-4 text-sm shadow-xl"
-              >
-                <p className="font-medium text-navy">
-                  {api.emptySlots} photo frame{api.emptySlots === 1 ? " is" : "s are"} still empty
-                </p>
-                <p className="mt-1 text-muted">Empty frames will be printed blank. Add to cart anyway?</p>
-                <div className="mt-3 flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmEmpty(false)}>
-                    Keep editing
-                  </Button>
-                  <Button size="sm" onClick={() => handleAddToCart(api, true)}>
-                    Add anyway
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+
           </div>
         )
       }

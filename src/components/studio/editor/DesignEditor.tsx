@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Redo2, Undo2, ZoomIn, ZoomOut, Maximize, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Redo2, Undo2, ZoomIn, ZoomOut, Maximize, Loader2, CheckCircle2, AlertCircle, Box, Expand } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-compress";
 import {
   MAX_UPLOADS,
   cloneNode,
+  detectShelves,
   emptyPhotoSlots,
   makeImage,
   makePhoto,
@@ -15,13 +16,16 @@ import {
   type DesignDoc,
   type DesignNode,
   type PhotoNode,
+  type StudioKind,
 } from "@/lib/studio/doc";
 import { STUDIO_FONTS } from "@/components/studio/fonts";
 import { useDesignState } from "@/components/studio/editor/useDesignState";
 import { CanvasStage, type CanvasHandle, type DropPayload } from "@/components/studio/editor/CanvasStage";
 import { Sidebar, type ShapePreset, type StudioElement, type TextPreset } from "@/components/studio/editor/Sidebar";
 import { PropertiesPanel } from "@/components/studio/editor/PropertiesPanel";
-import { MugMockup } from "@/components/studio/editor/MugMockup";
+import { Viewer3D } from "@/components/studio/three/Viewer3D";
+import { Preview3DModal } from "@/components/studio/three/Preview3DModal";
+import type { ShelfSpec } from "@/components/studio/three/models";
 import { imageNaturalSize } from "@/components/studio/editor/images";
 
 export interface EditorApi {
@@ -32,13 +36,21 @@ export interface EditorApi {
   notify(kind: "success" | "error", text: string): void;
   dirty: boolean;
   emptySlots: number;
+  /** Opens the large, rotatable 3D preview of the current design. */
+  show3D(opts?: Show3DOptions): void;
+}
+
+export interface Show3DOptions {
+  title?: string;
+  subtitle?: ReactNode;
+  footer?: (close: () => void) => ReactNode;
 }
 
 export interface DesignEditorProps {
   mode: "admin" | "customer";
   initialDoc: DesignDoc;
   elements: StudioElement[];
-  kind: "STANDARD" | "MUG";
+  kind: StudioKind;
   uploadEndpoint: string;
   readOnly?: boolean;
   /** Left side of the top bar (title, back link…). */
@@ -81,7 +93,9 @@ export function DesignEditor({
   const [savedRevision, setSavedRevision] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
-  const [mugPreview, setMugPreview] = useState<string | null>(null);
+  // Live 3D preview: refreshed shortly after each edit (texture + shelf positions).
+  const [live3D, setLive3D] = useState<{ texture: string | null; shelves: ShelfSpec[] }>({ texture: null, shelves: [] });
+  const [modal3D, setModal3D] = useState<(Show3DOptions & { texture: string | null; shelves: ShelfSpec[] }) | null>(null);
 
   useEffect(() => {
     latest.current = { doc, revision };
@@ -127,12 +141,29 @@ export function DesignEditor({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty, readOnly]);
 
-  // ── Live mug preview ─────────────────────────────────────────────────────
+  // ── Live 3D preview ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (kind !== "MUG" || !scale) return;
-    const t = setTimeout(() => setMugPreview(canvas?.quickPreview(1000) ?? null), 450);
+    if (!canvas || !scale || modal3D) return;
+    const t = setTimeout(() => {
+      setLive3D({
+        texture: canvas.quickPreview(1400),
+        shelves: kind === "MINIATURE" ? detectShelves(latest.current.doc) : [],
+      });
+    }, 600);
     return () => clearTimeout(t);
-  }, [canvas, kind, revision, scale]);
+  }, [canvas, kind, revision, scale, modal3D]);
+
+  const show3D = useCallback(
+    (opts: Show3DOptions = {}) => {
+      // High-resolution snapshot for the big viewer.
+      setModal3D({
+        ...opts,
+        texture: canvas?.quickPreview(2048) ?? null,
+        shelves: kind === "MINIATURE" ? detectShelves(doc) : [],
+      });
+    },
+    [canvas, kind, doc],
+  );
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const isEditable = useCallback(
@@ -393,6 +424,7 @@ export function DesignEditor({
     notify,
     dirty,
     emptySlots,
+    show3D,
   };
 
   const zoomBy = (dir: 1 | -1) =>
@@ -452,6 +484,14 @@ export function DesignEditor({
           <ToolButton label="Fit to screen" onClick={() => setZoom(1)}>
             <Maximize className="h-4 w-4" />
           </ToolButton>
+          <span className="mx-1 h-5 w-px bg-border" />
+          <button
+            type="button"
+            onClick={() => show3D()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gold/50 bg-gold/10 px-2.5 text-xs font-semibold text-gold-dark hover:bg-gold/20"
+          >
+            <Box className="h-4 w-4" /> 3D view
+          </button>
         </div>
         <div className="flex items-center gap-2">{renderActions(api)}</div>
       </div>
@@ -521,12 +561,34 @@ export function DesignEditor({
 
         <aside className="order-3 overflow-y-auto border-t border-border lg:w-[290px] lg:border-t-0 lg:border-l">
           {aside}
-          {kind === "MUG" ? (
-            <div className="border-b border-border p-4">
-              <p className="mb-3 font-display text-base text-navy">Mug preview</p>
-              <MugMockup imageUrl={mugPreview} aspect={doc.width / doc.height} />
+          <div className="border-b border-border p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="font-display text-base text-navy">Live 3D preview</p>
+              <button
+                type="button"
+                onClick={() => show3D()}
+                className="inline-flex items-center gap-1 text-xs font-medium text-gold-dark hover:underline"
+              >
+                <Expand className="h-3.5 w-3.5" /> Full view
+              </button>
             </div>
-          ) : null}
+            {modal3D ? (
+              <div className="flex h-[220px] items-center justify-center rounded-xl bg-cream-dark text-xs text-muted">
+                Open in the large view
+              </div>
+            ) : (
+              <Viewer3D
+                compact
+                autoRotate
+                kind={kind}
+                textureUrl={live3D.texture}
+                aspect={doc.width / doc.height}
+                shelves={live3D.shelves}
+                className="h-[220px]"
+              />
+            )}
+            <p className="mt-2 text-xs text-muted">Drag it to turn it around — updates as you edit.</p>
+          </div>
           {readOnly ? (
             <p className="p-4 text-sm text-muted">This design is part of an order, so it can no longer be edited.</p>
           ) : (
@@ -544,6 +606,18 @@ export function DesignEditor({
           )}
         </aside>
       </div>
+
+      <Preview3DModal
+        open={modal3D !== null}
+        onClose={() => setModal3D(null)}
+        title={modal3D?.title ?? "3D preview"}
+        subtitle={modal3D?.subtitle ?? "This is how your design will look on the finished piece."}
+        kind={kind}
+        textureUrl={modal3D?.texture ?? null}
+        aspect={doc.width / doc.height}
+        shelves={modal3D?.shelves ?? []}
+        footer={modal3D?.footer?.(() => setModal3D(null))}
+      />
     </div>
   );
 }
