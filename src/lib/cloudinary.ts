@@ -49,14 +49,15 @@ export async function uploadImage(buffer: Buffer, folder: string) {
 }
 
 /** Uploads directly from a remote URL — Cloudinary fetches it server-side,
- * so no bytes pass through our server. Used for one-off admin seeding, not
- * exposed through any customer- or admin-facing upload endpoint. */
-export async function uploadImageFromUrl(url: string, folder: string) {
+ * so no bytes pass through our server. Callers must only pass URLs they
+ * trust (admin seeding, or stock image URLs looked up server-side). */
+export async function uploadImageFromUrl(url: string, folder: string, opts: { publicId?: string } = {}) {
   if (!isConfigured()) throw new CloudinaryNotConfiguredError();
 
   const result = await cloudinary.uploader.upload(url, {
     folder: `petal-and-papers/${folder}`,
     resource_type: "image",
+    ...(opts.publicId ? { public_id: opts.publicId, overwrite: false } : {}),
   });
   return { url: result.secure_url, publicId: result.public_id };
 }

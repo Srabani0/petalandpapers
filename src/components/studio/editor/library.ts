@@ -27,14 +27,21 @@ let cached: Promise<Library> | null = null;
 /** Fetched once per page load and shared by every panel. */
 export function loadLibrary(): Promise<Library> {
   if (!cached) {
-    cached = fetch("/studio/library/manifest.json")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((m: { stickers: LibraryItem[]; backgrounds: LibraryItem[] }) => ({
-        stickers: m.stickers,
-        backgrounds: m.backgrounds,
-        stickerGroups: [...new Set(m.stickers.map((s) => s.group))],
-        backgroundGroups: [...new Set(m.backgrounds.map((s) => s.group))],
-      }))
+    const json = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
+    cached = Promise.all([
+      json("/studio/library/manifest.json") as Promise<{ stickers: LibraryItem[]; backgrounds: LibraryItem[] }>,
+      // Realistic 3D stickers (Fluent Emoji, MIT) — optional; the pastel set works alone.
+      (json("/studio/library/manifest-3d.json") as Promise<{ stickers: LibraryItem[] }>).catch(() => ({ stickers: [] as LibraryItem[] })),
+    ])
+      .then(([m, m3d]) => {
+        const stickers = [...m.stickers, ...m3d.stickers];
+        return {
+          stickers,
+          backgrounds: m.backgrounds,
+          stickerGroups: [...new Set(stickers.map((s) => s.group))],
+          backgroundGroups: [...new Set(m.backgrounds.map((s) => s.group))],
+        };
+      })
       .catch(() => {
         cached = null; // allow a retry next time
         return EMPTY;

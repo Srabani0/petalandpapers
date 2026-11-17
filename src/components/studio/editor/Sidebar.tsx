@@ -16,12 +16,14 @@ import {
   Loader2,
   Lock,
   Minus,
+  Images,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DesignDoc } from "@/lib/studio/doc";
 import { STUDIO_FONTS } from "@/components/studio/fonts";
 import { DRAG_MIME, type DropPayload } from "@/components/studio/editor/CanvasStage";
 import { BackgroundsGallery, StickersPanel } from "@/components/studio/editor/LibraryPanels";
+import { StockPanel, useStockAvailable } from "@/components/studio/editor/StockPanel";
 
 export type TextPreset = "heading" | "subheading" | "body" | "script";
 export type ShapePreset = "rect" | "rounded" | "circle" | "line" | "photo";
@@ -35,7 +37,8 @@ export interface StudioElement {
 
 const TABS = [
   { key: "elements", label: "Stickers", icon: Sticker },
-  { key: "photos", label: "Photos", icon: ImagePlus },
+  { key: "images", label: "Images", icon: Images },
+  { key: "photos", label: "Uploads", icon: ImagePlus },
   { key: "text", label: "Text", icon: Type },
   { key: "shapes", label: "Shapes", icon: Shapes },
   { key: "background", label: "Backdrop", icon: PaintBucket },
@@ -88,11 +91,13 @@ export function Sidebar({
 
 
   const bgLocked = mode === "customer" && doc.background.locked;
+  const stockOn = useStockAvailable();
+  const tabs = TABS.filter((t) => t.key !== "images" || stockOn);
 
   return (
     <div className="flex h-full min-h-0 flex-col lg:flex-row">
       <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border p-1.5 lg:w-[72px] lg:flex-col lg:border-r lg:border-b-0">
-        {TABS.map(({ key, label, icon: Icon }) => (
+        {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             type="button"
@@ -110,6 +115,8 @@ export function Sidebar({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 lg:w-[304px]">
         {tab === "elements" ? <StickersPanel categoryStickers={elements} onAdd={onAddElement} /> : null}
+
+        {tab === "images" && stockOn ? <StockPanel onAdd={onAddElement} /> : null}
 
         {tab === "photos" ? (
           <div className="flex flex-col gap-3">
