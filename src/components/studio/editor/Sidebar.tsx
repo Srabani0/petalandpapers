@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- thumbnails of user/admin uploads; next/image adds nothing here */
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Shapes,
   ImagePlus,
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { DesignDoc } from "@/lib/studio/doc";
 import { STUDIO_FONTS } from "@/components/studio/fonts";
 import { DRAG_MIME, type DropPayload } from "@/components/studio/editor/CanvasStage";
+import { BackgroundsGallery, StickersPanel } from "@/components/studio/editor/LibraryPanels";
 
 export type TextPreset = "heading" | "subheading" | "body" | "script";
 export type ShapePreset = "rect" | "rounded" | "circle" | "line" | "photo";
@@ -33,11 +34,11 @@ export interface StudioElement {
 }
 
 const TABS = [
-  { key: "elements", label: "Elements", icon: Sticker },
+  { key: "elements", label: "Stickers", icon: Sticker },
   { key: "photos", label: "Photos", icon: ImagePlus },
   { key: "text", label: "Text", icon: Type },
   { key: "shapes", label: "Shapes", icon: Shapes },
-  { key: "background", label: "Background", icon: PaintBucket },
+  { key: "background", label: "Backdrop", icon: PaintBucket },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -81,19 +82,10 @@ export function Sidebar({
   onBackground: (patch: Partial<DesignDoc["background"]>) => void;
   onUploadBackground: (file: File) => void;
 }) {
-  const [tab, setTab] = useState<TabKey>(elements.length > 0 ? "elements" : "photos");
+  const [tab, setTab] = useState<TabKey>("elements");
   const photoInput = useRef<HTMLInputElement>(null);
   const bgInput = useRef<HTMLInputElement>(null);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, StudioElement[]>();
-    for (const el of elements) {
-      const list = map.get(el.group) ?? [];
-      list.push(el);
-      map.set(el.group, list);
-    }
-    return [...map.entries()];
-  }, [elements]);
 
   const bgLocked = mode === "customer" && doc.background.locked;
 
@@ -116,39 +108,8 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 lg:w-[248px]">
-        {tab === "elements" ? (
-          groups.length === 0 ? (
-            <p className="text-sm text-muted">
-              {mode === "admin"
-                ? "No elements yet. Upload stickers and props for this category from the category page."
-                : "No stickers for this category yet — try Text, Shapes or your own Photos."}
-            </p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <p className="text-xs text-muted">Click to add, or drag onto your design.</p>
-              {groups.map(([group, items]) => (
-                <section key={group}>
-                  <h3 className="mb-2 text-xs font-semibold tracking-wide text-navy uppercase">{group}</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {items.map((el) => (
-                      <button
-                        key={el.id}
-                        type="button"
-                        title={el.name}
-                        onClick={() => onAddElement(el.imageUrl)}
-                        {...dragProps({ kind: "image", src: el.imageUrl })}
-                        className="flex aspect-square items-center justify-center rounded-md border border-border bg-[repeating-conic-gradient(#f4f1ea_0_25%,#fff_0_50%)] bg-[length:12px_12px] p-1.5 transition hover:border-gold"
-                      >
-                        <img src={el.imageUrl} alt={el.name} className="max-h-full max-w-full object-contain" />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 lg:w-[304px]">
+        {tab === "elements" ? <StickersPanel categoryStickers={elements} onAdd={onAddElement} /> : null}
 
         {tab === "photos" ? (
           <div className="flex flex-col gap-3">
@@ -254,9 +215,25 @@ export function Sidebar({
                 </label>
               </div>
 
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold tracking-wide text-navy uppercase">Textures &amp; patterns</h3>
+                  {doc.background.imageUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => onBackground({ imageUrl: null })}
+                      className="text-xs font-medium text-error hover:underline"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                <BackgroundsGallery current={doc.background.imageUrl} onPick={(src) => onBackground({ imageUrl: src })} />
+              </div>
+
               {mode === "admin" ? (
                 <div className="flex flex-col gap-2 border-t border-border pt-4">
-                  <h3 className="text-xs font-semibold tracking-wide text-navy uppercase">Background image</h3>
+                  <h3 className="text-xs font-semibold tracking-wide text-navy uppercase">Your own image</h3>
                   <input
                     ref={bgInput}
                     type="file"
