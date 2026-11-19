@@ -142,7 +142,7 @@ export function ProductForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="price">Price (₹)</Label>
           <Input
@@ -168,7 +168,7 @@ export function ProductForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="stock">Stock</Label>
           <Input
@@ -239,7 +239,7 @@ export function ProductForm({
               />
               Requires design approval before production
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="minPhotos">Min Photos</Label>
                 <Input

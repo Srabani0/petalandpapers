@@ -23,6 +23,9 @@ export interface CategorySticker {
 }
 
 const PAGE = 48;
+/** Two rows of previews per section: 4-up on phones, 6-up on tablets, 3-up in the desktop side panel. */
+const PREVIEW_GRID =
+  "grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-3 [&>*:nth-child(n+9)]:hidden sm:[&>*:nth-child(n+9)]:flex lg:[&>*:nth-child(n+7)]:hidden";
 
 function dragProps(payload: DropPayload, onUse?: () => void) {
   return {
@@ -123,7 +126,7 @@ function InfiniteGrid<T>({
 
   return (
     <>
-      <div className={cn("grid gap-2", cols === 3 ? "grid-cols-3" : "grid-cols-2")}>{items.slice(0, shown).map(render)}</div>
+      <div className={cn("grid gap-2", cols === 3 ? "grid-cols-4 sm:grid-cols-6 lg:grid-cols-3" : "grid-cols-2")}>{items.slice(0, shown).map(render)}</div>
       {shown < items.length ? <div ref={sentinel} className="h-8" /> : null}
     </>
   );
@@ -225,7 +228,7 @@ export function StickersPanel({
           {recent.length > 0 ? (
             <section>
               <SectionHeader title="Recently used" icon={<Clock className="h-3.5 w-3.5 text-gold-dark" />} />
-              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+              <div className="pp-no-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
                 {recent.map((r) => (
                   <div key={r.src} className="w-[72px] shrink-0">
                     <StickerTile thumb={r.thumb} name={r.name} onClick={() => add(r)} drag={dragProps({ kind: "image", src: r.src }, () => remember(r))} />
@@ -237,7 +240,7 @@ export function StickersPanel({
           {ownAsItems.length > 0 ? (
             <section>
               <SectionHeader title={OWN} icon={<Sparkles className="h-3.5 w-3.5 text-gold-dark" />} onAll={ownAsItems.length > 6 ? () => setGroup(OWN) : undefined} />
-              <div className="grid grid-cols-3 gap-2">{ownAsItems.slice(0, 6).map(tile)}</div>
+              <div className={PREVIEW_GRID}>{ownAsItems.slice(0, 12).map(tile)}</div>
             </section>
           ) : null}
           {library.stickerGroups.map((g) => {
@@ -245,7 +248,7 @@ export function StickersPanel({
             return (
               <section key={g}>
                 <SectionHeader title={g} onAll={() => setGroup(g)} />
-                <div className="grid grid-cols-3 gap-2">{items.slice(0, 6).map(tile)}</div>
+                <div className={PREVIEW_GRID}>{items.slice(0, 12).map(tile)}</div>
               </section>
             );
           })}

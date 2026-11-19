@@ -149,7 +149,7 @@ export function CustomizationFormBuilder({
         {fields.map((field, index) => (
           <div key={field.key} className="rounded-lg border border-border bg-cream-dark/50 p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="grid flex-1 grid-cols-2 gap-3">
+              <div className="grid flex-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label htmlFor={`label-${field.key}`}>Label</Label>
                   <Input
@@ -211,7 +211,7 @@ export function CustomizationFormBuilder({
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor={`placeholder-${field.key}`}>Placeholder</Label>
                 <Input
@@ -247,7 +247,7 @@ export function CustomizationFormBuilder({
             {(field.fieldType === "TEXT" ||
               field.fieldType === "TEXTAREA" ||
               field.fieldType === "NUMBER") && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label htmlFor={`min-${field.key}`}>
                     {field.fieldType === "NUMBER" ? "Min Value" : "Min Length"}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Redo2, Undo2, ZoomIn, ZoomOut, Maximize, Loader2, CheckCircle2, AlertCircle, Box, Expand } from "lucide-react";
+import { Redo2, Undo2, ZoomIn, ZoomOut, Maximize, Loader2, CheckCircle2, AlertCircle, Box, Expand, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-compress";
 import {
@@ -97,6 +97,12 @@ export function DesignEditor({
   // Live 3D preview: refreshed shortly after each edit (texture + shelf positions).
   const [live3D, setLive3D] = useState<Scene3D>(EMPTY_SCENE);
   const [modal3D, setModal3D] = useState<(Show3DOptions & Scene3D) | null>(null);
+  // Phones: which bottom sheet is open (library / template details); the
+  // element sheet shows whenever something is selected and neither is open.
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const pinch = useRef<{ d: number; z: number } | null>(null);
+  const sheetSwipe = useRef<number | null>(null);
 
   useEffect(() => {
     latest.current = { doc, revision };
@@ -158,6 +164,8 @@ export function DesignEditor({
 
   useEffect(() => {
     if (!canvas || !scale || modal3D) return;
+    // The live 3D panel only exists on desktop — don't spend phone CPU on it.
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
     const t = setTimeout(() => setLive3D(takeScene(latest.current.doc, 1400)), 600);
     return () => clearTimeout(t);
   }, [canvas, revision, scale, modal3D, takeScene]);
@@ -439,6 +447,20 @@ export function DesignEditor({
     show3D,
   };
 
+  const selectNode = (id: string | null) => {
+    select(id);
+    if (id) {
+      setLibraryOpen(false);
+      setDetailsOpen(false);
+    }
+  };
+  const openLibrary = (open: boolean) => {
+    setLibraryOpen(open);
+    if (open) setDetailsOpen(false);
+  };
+  const propsSheetOpen = detailsOpen || (!!selected && !libraryOpen && !readOnly);
+  const closePropsSheet = () => (detailsOpen ? setDetailsOpen(false) : select(null));
+
   const zoomBy = (dir: 1 | -1) =>
     setZoom((z) => {
       const idx = ZOOM_STEPS.findIndex((s) => s >= z - 0.001);
@@ -451,7 +473,7 @@ export function DesignEditor({
     .join(" ");
 
   return (
-    <div className={cn("flex flex-col bg-paper lg:h-full", className)}>
+    <div className={cn("flex h-full min-h-0 flex-col bg-paper", className)}>
       {/* Hidden spans make sure every studio @font-face is registered with the page. */}
       <div aria-hidden className={cn("pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0", fontClasses)}>
         {Object.values(STUDIO_FONTS).map((f) => (
@@ -476,9 +498,9 @@ export function DesignEditor({
       />
 
       {/* Top bar */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-3 py-2 sm:px-4">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-paper px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 sm:gap-4 sm:px-4">
         <div className="min-w-0 flex-1">{header}</div>
-        <div className="flex items-center gap-1">
+        <div className="hidden items-center gap-1 lg:flex">
           <ToolButton label="Undo (Ctrl+Z)" onClick={state.undo} disabled={!state.canUndo || readOnly}>
             <Undo2 className="h-4 w-4" />
           </ToolButton>
@@ -505,12 +527,12 @@ export function DesignEditor({
             <Box className="h-4 w-4" /> 3D view
           </button>
         </div>
-        <div className="flex items-center gap-2">{renderActions(api)}</div>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">{renderActions(api)}</div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         {!readOnly ? (
-          <aside className="order-2 max-h-[46vh] border-t border-border lg:order-1 lg:max-h-none lg:border-t-0 lg:border-r">
+          <aside className="contents lg:order-1 lg:flex lg:border-r lg:border-border">
             <Sidebar
               mode={mode}
               doc={doc}
@@ -523,15 +545,37 @@ export function DesignEditor({
               onAddShape={addShape}
               onBackground={setBackground}
               onUploadBackground={uploadBackground}
+              mobileOpen={libraryOpen}
+              onMobileOpenChange={openLibrary}
             />
           </aside>
         ) : null}
 
         <div
           ref={areaRef}
-          className="relative order-1 h-[58vh] min-w-0 flex-1 overflow-auto bg-[#ebe7df] lg:order-2 lg:h-auto"
+          className="relative order-1 min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain bg-[#ebe7df] lg:order-2"
+          style={{ touchAction: "pan-x pan-y" }}
+          onTouchStart={(e) => {
+            if (e.touches.length === 2) pinch.current = { d: touchDistance(e.touches), z: zoom };
+          }}
+          onTouchMove={(e) => {
+            if (pinch.current && e.touches.length === 2) {
+              const next = (pinch.current.z * touchDistance(e.touches)) / pinch.current.d;
+              setZoom(Math.min(4, Math.max(0.25, next)));
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (e.touches.length < 2) pinch.current = null;
+          }}
+          onClick={(e) => {
+            // Tapping the grey area around the design closes any open sheet (phones).
+            if (e.target === e.currentTarget) {
+              openLibrary(false);
+              setDetailsOpen(false);
+            }
+          }}
         >
-          <div className="flex min-h-full min-w-full p-4">
+          <div className="flex min-h-full min-w-full p-4 pt-14 lg:pt-4">
             <div className="m-auto shadow-[0_18px_40px_-18px_rgba(30,42,74,0.45)]">
               {scale > 0 ? (
                 <CanvasStage
@@ -541,7 +585,7 @@ export function DesignEditor({
                   mode={mode}
                   readOnly={readOnly}
                   selectedId={selectedId}
-                  onSelect={select}
+                  onSelect={selectNode}
                   onUpdateNode={updateNode}
                   onDrop={handleDrop}
                   onPhotoRequest={requestPhotoForSlot}
@@ -551,72 +595,144 @@ export function DesignEditor({
               )}
             </div>
           </div>
-
-          {uploading ? (
-            <div className="pointer-events-none sticky bottom-3 left-0 mx-auto flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm text-cream shadow-lg">
-              <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
-            </div>
-          ) : null}
-          {toast ? (
-            <div
-              role="status"
-              className={cn(
-                "sticky bottom-3 left-0 mx-auto flex w-fit max-w-[90%] items-center gap-2 rounded-full px-4 py-2 text-sm shadow-lg",
-                toast.kind === "error" ? "bg-error text-cream" : "bg-success text-cream",
-              )}
-            >
-              {toast.kind === "error" ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
-              {toast.text}
-            </div>
-          ) : null}
         </div>
 
-        <aside className="order-3 overflow-y-auto border-t border-border lg:w-[290px] lg:border-t-0 lg:border-l">
-          {aside}
-          <div className="border-b border-border p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="font-display text-base text-navy">Live 3D preview</p>
+        {/* Phones: floating toolbar over the canvas. */}
+        <div className="absolute top-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border/70 bg-paper/95 p-1 shadow-[0_6px_18px_-8px_rgba(30,42,74,0.4)] backdrop-blur lg:hidden">
+          <ToolButton label="Undo" onClick={state.undo} disabled={!state.canUndo || readOnly} round>
+            <Undo2 className="h-[18px] w-[18px]" />
+          </ToolButton>
+          <ToolButton label="Redo" onClick={state.redo} disabled={!state.canRedo || readOnly} round>
+            <Redo2 className="h-[18px] w-[18px]" />
+          </ToolButton>
+          <span className="mx-0.5 h-5 w-px bg-border" />
+          {zoom !== 1 ? (
+            <button type="button" onClick={() => setZoom(1)} className="h-9 rounded-full px-2 text-xs font-semibold text-navy tabular-nums active:bg-cream-dark">
+              {Math.round(zoom * 100)}% · Fit
+            </button>
+          ) : null}
+          {aside ? (
+            <button
+              type="button"
+              onClick={() => {
+                openLibrary(false);
+                setDetailsOpen((v) => !v);
+              }}
+              className={cn("inline-flex h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold", detailsOpen ? "bg-navy text-cream" : "text-navy active:bg-cream-dark")}
+            >
+              <SlidersHorizontal className="h-4 w-4" /> Details
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => show3D()}
+            className="inline-flex h-9 items-center gap-1 rounded-full bg-gold px-3 text-xs font-semibold text-cream active:scale-95"
+          >
+            <Box className="h-4 w-4" /> 3D
+          </button>
+        </div>
+
+        {uploading || toast ? (
+          <div className="pointer-events-none absolute top-14 left-1/2 z-50 flex w-[92%] -translate-x-1/2 flex-col items-center gap-2 lg:top-auto lg:bottom-4 lg:w-auto">
+            {uploading ? (
+              <div className="pp-rise flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm text-cream shadow-lg">
+                <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+              </div>
+            ) : null}
+            {toast ? (
+              <div
+                role="status"
+                className={cn(
+                  "pp-rise flex w-fit max-w-full items-center gap-2 rounded-full px-4 py-2 text-sm shadow-lg",
+                  toast.kind === "error" ? "bg-error text-cream" : "bg-success text-cream",
+                )}
+              >
+                {toast.kind === "error" ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                {toast.text}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Phones: bottom sheet for the selected element (or template details). Desktop: right panel. */}
+        <aside
+          className={cn(
+            "absolute inset-x-0 bottom-[var(--tabbar-h)] z-30 flex max-h-[min(48dvh,460px)] flex-col rounded-t-[22px] border-t border-border bg-paper shadow-[0_-14px_36px_-14px_rgba(30,42,74,0.4)] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+            propsSheetOpen ? "translate-y-0" : "pointer-events-none translate-y-[calc(100%+var(--tabbar-h))]",
+            readOnly && "bottom-0",
+            "lg:pointer-events-auto lg:static lg:order-3 lg:z-auto lg:max-h-none lg:w-[290px] lg:translate-y-0 lg:rounded-none lg:border-t-0 lg:border-l lg:shadow-none lg:transition-none",
+          )}
+        >
+          <div
+            className="flex shrink-0 touch-none flex-col items-center px-4 pt-2 pb-1 lg:hidden"
+            onTouchStart={(e) => (sheetSwipe.current = e.touches[0].clientY)}
+            onTouchEnd={(e) => {
+              if (sheetSwipe.current !== null && e.changedTouches[0].clientY - sheetSwipe.current > 50) closePropsSheet();
+              sheetSwipe.current = null;
+            }}
+          >
+            <span className="h-1.5 w-10 rounded-full bg-border" />
+            <div className="mt-1.5 flex w-full items-center justify-between">
+              <p className="font-display text-base text-navy">{detailsOpen ? "Template details" : "Edit element"}</p>
               <button
                 type="button"
-                onClick={() => show3D()}
-                className="inline-flex items-center gap-1 text-xs font-medium text-gold-dark hover:underline"
+                onClick={closePropsSheet}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-cream-dark text-navy active:scale-90"
               >
-                <Expand className="h-3.5 w-3.5" /> Full view
+                <X className="h-4 w-4" />
               </button>
             </div>
-            {modal3D ? (
-              <div className="flex h-[220px] items-center justify-center rounded-xl bg-cream-dark text-xs text-muted">
-                Open in the large view
-              </div>
-            ) : (
-              <Viewer3D
-                compact
-                autoRotate
-                kind={kind}
-                textureUrl={live3D.texture}
-                aspect={doc.width / doc.height}
-                shelves={live3D.shelves}
-                items={live3D.items}
-                className="h-[220px]"
-              />
-            )}
-            <p className="mt-2 text-xs text-muted">Drag it to turn it around — updates as you edit.</p>
           </div>
-          {readOnly ? (
-            <p className="p-4 text-sm text-muted">This design is part of an order, so it can no longer be edited.</p>
-          ) : (
-            <PropertiesPanel
-              node={selected}
-              mode={mode}
-              emptySlots={emptySlots}
-              onChange={(patch, key) => selected && updateNode(selected.id, patch, key)}
-              onDelete={deleteSelected}
-              onDuplicate={duplicateSelected}
-              onReorder={(to) => selected && reorder(selected.id, to)}
-              onReplacePhoto={() => selected && requestPhotoForSlot(selected.id)}
-              onDeselect={() => select(null)}
-            />
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {aside ? <div className={cn(detailsOpen ? "block" : "hidden", "lg:block")}>{aside}</div> : null}
+            <div className={cn(detailsOpen ? "hidden" : "block", "lg:block")}>
+              <div className="hidden border-b border-border p-4 lg:block">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="font-display text-base text-navy">Live 3D preview</p>
+                  <button
+                    type="button"
+                    onClick={() => show3D()}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-gold-dark hover:underline"
+                  >
+                    <Expand className="h-3.5 w-3.5" /> Full view
+                  </button>
+                </div>
+                {modal3D ? (
+                  <div className="flex h-[220px] items-center justify-center rounded-xl bg-cream-dark text-xs text-muted">
+                    Open in the large view
+                  </div>
+                ) : (
+                  <Viewer3D
+                    compact
+                    autoRotate
+                    kind={kind}
+                    textureUrl={live3D.texture}
+                    aspect={doc.width / doc.height}
+                    shelves={live3D.shelves}
+                    items={live3D.items}
+                    className="h-[220px]"
+                  />
+                )}
+                <p className="mt-2 text-xs text-muted">Drag it to turn it around — updates as you edit.</p>
+              </div>
+              {readOnly ? (
+                <p className="p-4 text-sm text-muted">This design is part of an order, so it can no longer be edited.</p>
+              ) : (
+                <PropertiesPanel
+                  node={selected}
+                  mode={mode}
+                  emptySlots={emptySlots}
+                  onChange={(patch, key) => selected && updateNode(selected.id, patch, key)}
+                  onDelete={deleteSelected}
+                  onDuplicate={duplicateSelected}
+                  onReorder={(to) => selected && reorder(selected.id, to)}
+                  onReplacePhoto={() => selected && requestPhotoForSlot(selected.id)}
+                  onDeselect={() => select(null)}
+                />
+              )}
+            </div>
+          </div>
         </aside>
       </div>
 
@@ -636,15 +752,22 @@ export function DesignEditor({
   );
 }
 
+function touchDistance(touches: React.TouchList) {
+  return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY) || 1;
+}
+
 function ToolButton({
   label,
   onClick,
   disabled,
+  round,
   children,
 }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  /** Larger, round touch target (phone toolbar). */
+  round?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -654,7 +777,10 @@ function ToolButton({
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-8 w-8 items-center justify-center rounded-md text-navy hover:bg-cream-dark disabled:opacity-35"
+      className={cn(
+        "flex items-center justify-center text-navy hover:bg-cream-dark active:scale-90 disabled:opacity-35",
+        round ? "h-9 w-9 rounded-full" : "h-8 w-8 rounded-md",
+      )}
     >
       {children}
     </button>

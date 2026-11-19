@@ -168,7 +168,7 @@ export function StockPanel({ onAdd }: { onAdd: (src: string) => Promise<void> | 
         <p className="py-10 text-center text-sm text-muted">No images found. Try a simpler word like &ldquo;rose&rdquo; or &ldquo;gift&rdquo;.</p>
       ) : (
         <>
-          <div className="columns-2 gap-2 [&>*]:mb-2">
+          <div className="columns-2 gap-2 sm:columns-3 lg:columns-2 [&>*]:mb-2">
             {items.map((img) => (
               <button
                 key={img.id}

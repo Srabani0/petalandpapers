@@ -17,6 +17,7 @@ import {
   Lock,
   Minus,
   Images,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DesignDoc } from "@/lib/studio/doc";
@@ -72,6 +73,8 @@ export function Sidebar({
   onAddShape,
   onBackground,
   onUploadBackground,
+  mobileOpen,
+  onMobileOpenChange,
 }: {
   mode: "admin" | "customer";
   doc: DesignDoc;
@@ -84,8 +87,30 @@ export function Sidebar({
   onAddShape: (preset: ShapePreset) => void;
   onBackground: (patch: Partial<DesignDoc["background"]>) => void;
   onUploadBackground: (file: File) => void;
+  /** Phones: whether the panel is open as a bottom sheet over the canvas. */
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
 }) {
   const [tab, setTab] = useState<TabKey>("elements");
+  const swipe = useRef<number | null>(null);
+
+  const isPhone = () => typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+  const pickTab = (key: TabKey) => {
+    if (isPhone() && key === tab && mobileOpen) return onMobileOpenChange(false);
+    setTab(key);
+    onMobileOpenChange(true);
+  };
+  /** On phones, close the sheet after adding something so the result is visible. */
+  const thenClose =
+    <A extends unknown[]>(fn: (...args: A) => void) =>
+    (...args: A) => {
+      fn(...args);
+      if (isPhone()) onMobileOpenChange(false);
+    };
+  const addElement = thenClose(onAddElement);
+  const pickPhoto = thenClose(onUsePhoto);
+  const addText = thenClose(onAddText);
+  const addShape = thenClose(onAddShape);
   const photoInput = useRef<HTMLInputElement>(null);
   const bgInput = useRef<HTMLInputElement>(null);
 
@@ -95,28 +120,69 @@ export function Sidebar({
   const tabs = TABS.filter((t) => t.key !== "images" || stockOn);
 
   return (
-    <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border p-1.5 lg:w-[72px] lg:flex-col lg:border-r lg:border-b-0">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={cn(
-              "flex min-w-[64px] flex-col items-center gap-1 rounded-md px-2 py-2 text-[11px] font-medium transition-colors",
-              tab === key ? "bg-navy text-cream" : "text-navy/70 hover:bg-cream-dark",
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
+    <div className="contents lg:flex lg:h-full lg:min-h-0 lg:flex-row">
+      {/* Phones: app-style bottom tab bar. Desktop: vertical rail. */}
+      <nav className="relative z-40 order-3 flex h-[var(--tabbar-h)] shrink-0 items-start justify-around border-t border-border bg-paper px-1 pt-1.5 pb-[env(safe-area-inset-bottom)] lg:order-none lg:h-auto lg:w-[72px] lg:flex-col lg:items-stretch lg:justify-start lg:gap-1 lg:border-t-0 lg:border-r lg:p-1.5">
+        {tabs.map(({ key, label, icon: Icon }) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => pickTab(key)}
+              aria-pressed={active}
+              className={cn(
+                "group flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1 text-[10.5px] font-medium transition-colors lg:flex-none lg:rounded-md lg:px-2 lg:py-2 lg:text-[11px]",
+                active ? "text-navy lg:bg-navy lg:text-cream" : "text-navy/60 hover:bg-cream-dark lg:text-navy/70",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-8 w-12 items-center justify-center rounded-full transition-all duration-200 group-active:scale-90 lg:h-auto lg:w-auto",
+                  active && mobileOpen ? "bg-navy text-cream lg:bg-transparent" : active ? "bg-navy/10 lg:bg-transparent" : "",
+                )}
+              >
+                <Icon className="h-5 w-5 lg:h-4 lg:w-4" />
+              </span>
+              <span className="truncate">{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 lg:w-[304px]">
-        {tab === "elements" ? <StickersPanel categoryStickers={elements} onAdd={onAddElement} /> : null}
+      {/* Phones: bottom sheet over the canvas. Desktop: side panel. */}
+      <div
+        className={cn(
+          "absolute inset-x-0 bottom-[var(--tabbar-h)] z-30 flex h-[min(60dvh,540px)] flex-col rounded-t-[22px] border-t border-border bg-paper shadow-[0_-14px_36px_-14px_rgba(30,42,74,0.4)] transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+          mobileOpen ? "translate-y-0" : "pointer-events-none translate-y-[calc(100%+var(--tabbar-h))]",
+          "lg:pointer-events-auto lg:static lg:z-auto lg:h-auto lg:min-h-0 lg:w-[304px] lg:translate-y-0 lg:rounded-none lg:border-t-0 lg:shadow-none lg:transition-none",
+        )}
+      >
+        <div
+          className="flex shrink-0 cursor-grab touch-none flex-col items-center px-4 pt-2 pb-1 lg:hidden"
+          onTouchStart={(e) => (swipe.current = e.touches[0].clientY)}
+          onTouchEnd={(e) => {
+            if (swipe.current !== null && e.changedTouches[0].clientY - swipe.current > 50) onMobileOpenChange(false);
+            swipe.current = null;
+          }}
+        >
+          <span className="h-1.5 w-10 rounded-full bg-border" />
+          <div className="mt-1.5 flex w-full items-center justify-between">
+            <p className="font-display text-base text-navy">{tabs.find((t) => t.key === tab)?.label}</p>
+            <button
+              type="button"
+              onClick={() => onMobileOpenChange(false)}
+              aria-label="Close panel"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-cream-dark text-navy active:scale-90"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+        {tab === "elements" ? <StickersPanel categoryStickers={elements} onAdd={addElement} /> : null}
 
-        {tab === "images" && stockOn ? <StockPanel onAdd={onAddElement} /> : null}
+        {tab === "images" && stockOn ? <StockPanel onAdd={addElement} /> : null}
 
         {tab === "photos" ? (
           <div className="flex flex-col gap-3">
@@ -150,7 +216,7 @@ export function Sidebar({
                   <button
                     key={src}
                     type="button"
-                    onClick={() => onUsePhoto(src)}
+                    onClick={() => pickPhoto(src)}
                     {...dragProps({ kind: "photo", src })}
                     className="aspect-square overflow-hidden rounded-md border border-border transition hover:border-gold"
                   >
@@ -168,21 +234,21 @@ export function Sidebar({
 
         {tab === "text" ? (
           <div className="flex flex-col gap-2">
-            <TextButton label="Add a heading" font="playfair" size="text-xl font-bold" onClick={() => onAddText("heading")} />
-            <TextButton label="Add a subheading" font="poppins" size="text-base font-semibold" onClick={() => onAddText("subheading")} />
-            <TextButton label="Add body text" font="inter" size="text-sm" onClick={() => onAddText("body")} />
-            <TextButton label="Add script text" font="greatVibes" size="text-2xl" onClick={() => onAddText("script")} />
+            <TextButton label="Add a heading" font="playfair" size="text-xl font-bold" onClick={() => addText("heading")} />
+            <TextButton label="Add a subheading" font="poppins" size="text-base font-semibold" onClick={() => addText("subheading")} />
+            <TextButton label="Add body text" font="inter" size="text-sm" onClick={() => addText("body")} />
+            <TextButton label="Add script text" font="greatVibes" size="text-2xl" onClick={() => addText("script")} />
             <p className="mt-2 text-xs text-muted">Double-click any text on the design to type directly.</p>
           </div>
         ) : null}
 
         {tab === "shapes" ? (
           <div className="grid grid-cols-2 gap-2">
-            <ShapeButton icon={Frame} label="Photo frame" onClick={() => onAddShape("photo")} />
-            <ShapeButton icon={Square} label="Square" onClick={() => onAddShape("rect")} />
-            <ShapeButton icon={RectangleHorizontal} label="Rounded" onClick={() => onAddShape("rounded")} />
-            <ShapeButton icon={Circle} label="Circle" onClick={() => onAddShape("circle")} />
-            <ShapeButton icon={Minus} label="Line / shelf" onClick={() => onAddShape("line")} />
+            <ShapeButton icon={Frame} label="Photo frame" onClick={() => addShape("photo")} />
+            <ShapeButton icon={Square} label="Square" onClick={() => addShape("rect")} />
+            <ShapeButton icon={RectangleHorizontal} label="Rounded" onClick={() => addShape("rounded")} />
+            <ShapeButton icon={Circle} label="Circle" onClick={() => addShape("circle")} />
+            <ShapeButton icon={Minus} label="Line / shelf" onClick={() => addShape("line")} />
           </div>
         ) : null}
 
@@ -282,6 +348,7 @@ export function Sidebar({
             </div>
           )
         ) : null}
+        </div>
       </div>
     </div>
   );

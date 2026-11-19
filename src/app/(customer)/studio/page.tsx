@@ -35,14 +35,14 @@ export default async function StudioPage() {
             New designs are on their way — check back soon!
           </p>
         ) : (
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-4">
             {categories.map((c) => {
               const coverDoc = !c.coverImageUrl && c.coverCanvas ? parseDesignDoc(c.coverCanvas) : null;
               return (
                 <Link
                   key={c.id}
                   href={`/studio/${c.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-paper transition-all hover:-translate-y-1 hover:border-gold/40 hover:shadow-[0_16px_40px_-16px_rgba(30,42,74,0.25)]"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-paper transition-all active:scale-[0.98] hover:-translate-y-1 hover:border-gold/40 hover:shadow-[0_16px_40px_-16px_rgba(30,42,74,0.25)]"
                 >
                   <div className="relative aspect-square overflow-hidden bg-[#ebe7df]">
                     {c.coverImageUrl ? (
@@ -61,14 +61,14 @@ export default async function StudioPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-between gap-3 p-5">
+                  <div className="flex items-center justify-between gap-2 p-3 sm:gap-3 sm:p-5">
                     <div>
-                      <h2 className="font-display text-xl text-navy">{c.name}</h2>
-                      <p className="mt-0.5 text-sm text-muted">
+                      <h2 className="font-display text-base leading-tight text-navy sm:text-xl">{c.name}</h2>
+                      <p className="mt-0.5 text-xs text-muted sm:text-sm">
                         {c.templateCount} design{c.templateCount === 1 ? "" : "s"} · from ₹{c.startingPrice.toFixed(0)}
                       </p>
                     </div>
-                    <ArrowRight className="h-5 w-5 shrink-0 text-gold-dark transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="hidden h-5 w-5 shrink-0 text-gold-dark transition-transform group-hover:translate-x-1 sm:block" />
                   </div>
                 </Link>
               );

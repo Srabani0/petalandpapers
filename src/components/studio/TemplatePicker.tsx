@@ -104,8 +104,8 @@ export function TemplatePicker({
   return (
     <>
       {allSizes.length > 1 ? (
-        <div className="mt-8 flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-sm text-muted">Size:</span>
+        <div className="pp-no-scrollbar sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 mt-6 flex items-center gap-2 overflow-x-auto bg-cream/95 px-4 py-2.5 backdrop-blur sm:static sm:mx-0 sm:mt-8 sm:flex-wrap sm:overflow-visible sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+          <span className="mr-1 shrink-0 text-sm text-muted">Size:</span>
           <Chip active={sizeFilter === null} onClick={() => setSizeFilter(null)}>
             All sizes
           </Chip>
@@ -117,7 +117,7 @@ export function TemplatePicker({
         </div>
       ) : null}
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-5 sm:mt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {visible.map((group) => {
           const pick =
             group.sizes.find((s) => s.id === chosen[group.name]) ??
@@ -226,7 +226,7 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "rounded-full border transition-colors",
+        "shrink-0 rounded-full border whitespace-nowrap transition-colors active:scale-95",
         small ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-sm",
         active ? "border-navy bg-navy text-cream" : "border-border bg-paper text-navy hover:border-gold",
       )}

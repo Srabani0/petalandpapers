@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore } from "react";
 import { Stage, Layer, Group, Rect, Ellipse, Text as KText, Image as KImage, Transformer, Line } from "react-konva";
 import Konva from "konva";
 import {
@@ -244,6 +244,20 @@ function BackgroundImage({ src, width, height }: { src: string; width: number; h
 
 // ─── Stage ─────────────────────────────────────────────────────────────────
 
+const COARSE = "(pointer: coarse)";
+/** True on touch screens — the selection handles get bigger there. */
+function useCoarsePointer() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(COARSE);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(COARSE).matches,
+    () => false,
+  );
+}
+
 export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
   { doc, scale, mode, readOnly, selectedId, onSelect, onUpdateNode, onDrop, onPhotoRequest },
   ref,
@@ -251,6 +265,7 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const coarse = useCoarsePointer();
   const [guides, setGuides] = useState<{ v: number | null; h: number | null }>({ v: null, h: null });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -618,8 +633,10 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
             }
             rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
             rotationSnapTolerance={4}
-            anchorSize={10}
-            anchorCornerRadius={5}
+            anchorSize={coarse ? 22 : 10}
+            anchorCornerRadius={coarse ? 11 : 5}
+            rotateAnchorOffset={coarse ? 36 : 50}
+            padding={coarse ? 4 : 0}
             anchorStroke="#a67c3d"
             borderStroke="#a67c3d"
             borderStrokeWidth={1.5}

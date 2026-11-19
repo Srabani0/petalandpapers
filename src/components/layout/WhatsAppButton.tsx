@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { X, Send } from "lucide-react";
 
 const WHATSAPP_NUMBER = "918488082783";
@@ -8,12 +10,20 @@ const DEFAULT_MESSAGE = "Hi Petal & Papers! I'd love to know more about your han
 
 export function WhatsAppButton() {
   const [open, setOpen] = useState(false);
+  // On phones these pages have their own pinned action bar where the bubble would sit.
+  const pathname = usePathname() ?? "";
+  const hasActionBar = /^\/(cart|checkout|product\/)/.test(pathname);
   const chatUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(DEFAULT_MESSAGE)}`;
 
   return (
-    <div className="fixed right-5 bottom-5 z-50 flex flex-col items-end gap-3">
+    <div
+      className={cn(
+        "fixed right-4 bottom-[calc(var(--tabbar-h)+0.75rem)] z-50 flex-col items-end gap-3 lg:right-5 lg:bottom-5 lg:flex",
+        hasActionBar ? "hidden" : "flex",
+      )}
+    >
       {open ? (
-        <div className="w-72 overflow-hidden rounded-2xl border border-border bg-paper shadow-2xl">
+        <div className="pp-rise w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-paper shadow-2xl">
           <div className="flex items-center justify-between gap-2 bg-[#25D366] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <WhatsAppIcon className="h-5 w-5" />
@@ -50,7 +60,7 @@ export function WhatsAppButton() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close WhatsApp chat" : "Chat on WhatsApp"}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform duration-200 hover:scale-105"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform duration-200 hover:scale-105 active:scale-95 lg:h-14 lg:w-14"
       >
         {open ? <X className="h-6 w-6" /> : <WhatsAppIcon className="h-7 w-7" />}
       </button>

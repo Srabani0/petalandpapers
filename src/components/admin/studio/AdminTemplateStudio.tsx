@@ -126,7 +126,7 @@ export function AdminTemplateStudio({
         elements={elements}
         kind={kind}
         uploadEndpoint="/api/admin/studio/uploads"
-        className="h-full overflow-y-auto lg:overflow-hidden"
+        className="h-full"
         header={
           <div className="flex items-center gap-3">
             <Link
@@ -147,7 +147,8 @@ export function AdminTemplateStudio({
         renderActions={(api) => (
           <Button size="sm" onClick={() => save(api)} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {templateId ? (api.dirty ? "Save template" : "Saved") : "Create template"}
+            <span className="sm:hidden">{templateId ? (api.dirty ? "Save" : "Saved") : "Create"}</span>
+            <span className="hidden sm:inline">{templateId ? (api.dirty ? "Save template" : "Saved") : "Create template"}</span>
           </Button>
         )}
         aside={

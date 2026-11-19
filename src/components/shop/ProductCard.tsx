@@ -27,7 +27,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       href={productPath(product)}
-      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-paper transition-all hover:-translate-y-1 hover:border-gold/40 hover:shadow-[0_16px_40px_-16px_rgba(30,42,74,0.25)]"
+      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-paper transition-all active:scale-[0.98] hover:-translate-y-1 hover:border-gold/40 hover:shadow-[0_16px_40px_-16px_rgba(30,42,74,0.25)]"
     >
       <div className="relative aspect-square bg-cream-dark">
         {primaryImage ? (
@@ -61,9 +61,9 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         />
       </div>
 
-      <div className="flex flex-1 flex-col gap-1 p-4">
-        <p className="text-xs tracking-wide text-muted uppercase">{product.category.name}</p>
-        <h3 className="font-display text-base text-navy">{product.name}</h3>
+      <div className="flex flex-1 flex-col gap-1 p-3 sm:p-4">
+        <p className="truncate text-[10px] tracking-wide text-muted uppercase sm:text-xs">{product.category.name}</p>
+        <h3 className="line-clamp-2 font-display text-sm leading-snug text-navy sm:text-base">{product.name}</h3>
         <div className="mt-auto flex items-baseline gap-2 pt-2">
           <span className="font-medium text-navy">₹{product.finalPrice}</span>
           {hasDiscount && (

@@ -192,7 +192,7 @@ export function CustomerStudio({
       kind={kind}
       uploadEndpoint="/api/studio/uploads"
       readOnly={ordered}
-      className="lg:h-[calc(100dvh-7.5rem)] lg:min-h-[620px]"
+      className="h-[100dvh]"
       header={
         <div className="flex items-center gap-3">
           <Link
@@ -205,7 +205,7 @@ export function CustomerStudio({
           <div className="min-w-0">
             <p className="truncate font-display text-base text-navy">{templateName}</p>
             <p className="truncate text-xs text-muted">
-              {sizeLabel} · ₹{price.toFixed(2)}
+              {sizeLabel} · ₹{price.toFixed(0)}
             </p>
           </div>
         </div>
@@ -214,17 +214,19 @@ export function CustomerStudio({
         ordered ? (
           <Button size="sm" onClick={() => handleCopy(api)} disabled={busy !== null}>
             {busy === "copy" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-            Make a copy to edit
+            <span className="sm:hidden">Copy</span>
+            <span className="hidden sm:inline">Make a copy to edit</span>
           </Button>
         ) : (
           <div className="relative flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleSave(api)} disabled={busy !== null}>
+            <Button size="sm" variant="outline" onClick={() => handleSave(api)} disabled={busy !== null} aria-label={api.dirty ? "Save" : "Saved"}>
               {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {api.dirty ? "Save" : "Saved"}
+              <span className="hidden sm:inline">{api.dirty ? "Save" : "Saved"}</span>
             </Button>
             <Button size="sm" onClick={() => handleAddToCart(api)} disabled={busy !== null}>
               {busy === "cart" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
-              {isInCart ? "Update & view cart" : "Add to cart"}
+              <span className="sm:hidden">{isInCart ? "Cart" : "Add"}</span>
+              <span className="hidden sm:inline">{isInCart ? "Update & view cart" : "Add to cart"}</span>
             </Button>
 
 

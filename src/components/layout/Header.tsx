@@ -47,23 +47,23 @@ export function Header({
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-cream/95 backdrop-blur supports-backdrop-blur:bg-cream/80">
+    <header className="sticky top-0 z-50 border-b border-border bg-cream/95 pt-[env(safe-area-inset-top)] backdrop-blur supports-backdrop-blur:bg-cream/80">
       {user ? <SessionKeepAlive /> : null}
       <div className="hidden bg-navy text-cream sm:block">
         <PromoStrip promotions={promotions} />
       </div>
 
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:h-20 lg:px-8">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
           <Image
             src="/brand/logo-mark.png"
             alt=""
             width={44}
             height={44}
-            className="h-11 w-11 rounded-full object-cover"
+            className="h-9 w-9 rounded-full object-cover lg:h-11 lg:w-11"
             priority
           />
-          <span className="font-display text-xl text-navy sm:text-2xl">
+          <span className="font-display text-lg text-navy sm:text-xl lg:text-2xl">
             Petal &amp; Papers
           </span>
         </Link>
@@ -101,7 +101,7 @@ export function Header({
             </IconButton>
           ) : null}
           <AccountMenu user={user} />
-          <IconButton href="/cart" label="Cart">
+          <IconButton href="/cart" label="Cart" className="hidden lg:inline-flex">
             <ShoppingBag className="h-5 w-5" />
             {cartCount > 0 ? (
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-cream">
@@ -123,7 +123,7 @@ export function Header({
       </div>
 
       {mobileOpen ? (
-        <nav className="border-t border-border bg-cream px-4 py-4 lg:hidden">
+        <nav className="pp-rise max-h-[calc(100dvh-3.5rem-var(--tabbar-h))] overflow-y-auto border-t border-border bg-cream px-4 py-3 lg:hidden">
           <ul className="flex flex-col gap-1">
             {[
               ...NAV_LINKS,
@@ -140,7 +140,10 @@ export function Header({
                 <Link
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block rounded-md px-3 py-2.5 text-sm font-medium text-navy hover:bg-cream-dark"
+                  className={cn(
+                    "block rounded-xl px-4 py-3 text-[15px] font-medium text-navy hover:bg-cream-dark active:bg-cream-dark",
+                    pathname === link.href && "bg-cream-dark",
+                  )}
                 >
                   {link.label}
                 </Link>
@@ -152,7 +155,7 @@ export function Header({
                   type="button"
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-error hover:bg-error/10 disabled:opacity-50"
+                  className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-left text-[15px] font-medium text-error hover:bg-error/10 disabled:opacity-50"
                 >
                   <LogOut className="h-4 w-4" />
                   {loggingOut ? "Logging out…" : "Log out"}

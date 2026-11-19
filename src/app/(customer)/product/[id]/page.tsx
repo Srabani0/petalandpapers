@@ -195,7 +195,13 @@ export default async function ProductDetailPage({ params }: Props) {
             Delivery in {product.deliveryTime}
           </div>
 
-          <div className="mt-8">
+          {/* Phones: buy bar pinned above the tab bar (price + button), like a shopping app. */}
+          <div className="fixed inset-x-0 bottom-[var(--tabbar-h)] z-30 flex items-center gap-3 border-t border-border bg-paper/95 px-4 py-3 shadow-[0_-10px_24px_-18px_rgba(30,42,74,0.45)] backdrop-blur-md lg:static lg:mt-8 lg:block lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
+            <div className="min-w-0 shrink-0 lg:hidden">
+              <p className="font-display text-lg leading-tight text-navy">₹{product.finalPrice.toFixed(0)}</p>
+              {hasDiscount ? <p className="text-xs text-muted line-through">₹{product.price.toFixed(0)}</p> : null}
+            </div>
+            <div className="min-w-0 flex-1 [&_a]:w-full [&_button]:w-full lg:[&_a]:w-auto lg:[&_button]:w-auto">
             <AddToCartButton
               productId={product.id}
               disabled={outOfStock}
@@ -206,7 +212,9 @@ export default async function ProductDetailPage({ params }: Props) {
                   : null
               }
             />
+            </div>
           </div>
+          <div aria-hidden className="h-20 lg:hidden" />
         </div>
       </Container>
 

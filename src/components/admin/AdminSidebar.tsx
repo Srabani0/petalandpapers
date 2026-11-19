@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ import {
   Palette,
   Menu,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,10 +41,9 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  const isActive = (href: string) => (href === "/admin" ? pathname === href : pathname.startsWith(href));
+  const TABS = NAV_ITEMS.filter((n) => ["/admin", "/admin/orders", "/admin/products", "/admin/studio"].includes(n.href));
+  const moreActive = !TABS.some((t) => isActive(t.href));
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -53,7 +53,7 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border bg-paper px-4 py-3 lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-paper/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur lg:hidden">
         <Link href="/" className="flex items-center gap-2">
           <Image
             src="/brand/logo-mark.png"
@@ -63,6 +63,7 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
             className="h-7 w-7 rounded-full object-cover"
           />
           <span className="font-display text-base text-navy">Petal &amp; Papers</span>
+          <span className="rounded-full bg-navy px-2 py-0.5 text-[10px] font-semibold tracking-wide text-cream uppercase">Admin</span>
         </Link>
         <button
           type="button"
@@ -78,7 +79,7 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
         <div
           onClick={() => setOpen(false)}
           aria-hidden
-          className="fixed inset-0 z-40 bg-navy/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-navy/40 backdrop-blur-[2px] lg:hidden"
         />
       ) : null}
 
@@ -112,13 +113,14 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const active = href === "/admin" ? pathname === href : pathname.startsWith(href);
+            const active = isActive(href);
             return (
               <Link
                 key={href}
                 href={href}
+                onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors lg:rounded-md lg:py-2.5",
                   active ? "bg-navy text-cream" : "text-navy/80 hover:bg-cream-dark",
                 )}
               >
@@ -142,6 +144,47 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
           </button>
         </div>
       </aside>
+
+      {/* Phones: app-style bottom tabs for the most used sections; "More" opens the full menu. */}
+      <nav
+        aria-label="Admin"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-paper/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-16px_rgba(30,42,74,0.35)] backdrop-blur-md lg:hidden"
+      >
+        <ul className="mx-auto flex h-16 max-w-md items-stretch justify-around px-1">
+          {[...TABS.map((t) => ({ ...t, active: isActive(t.href) })), { href: "", label: "More", icon: MoreHorizontal, active: moreActive || open }].map(
+            ({ href, label, icon: Icon, active }) => {
+              const inner = (
+                <>
+                  <span
+                    className={cn(
+                      "flex h-8 w-12 items-center justify-center rounded-full transition-all duration-200 group-active:scale-90",
+                      active ? "bg-navy text-cream" : "text-navy/55",
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className={cn("text-[11px] leading-none font-medium", active ? "text-navy" : "text-navy/55")}>
+                    {label === "Design Studio" ? "Studio" : label}
+                  </span>
+                </>
+              );
+              return (
+                <li key={label} className="flex flex-1">
+                  {href ? (
+                    <Link href={href} onClick={() => setOpen(false)} className="group flex flex-1 flex-col items-center justify-center gap-1">
+                      {inner}
+                    </Link>
+                  ) : (
+                    <button type="button" onClick={() => setOpen(true)} className="group flex flex-1 flex-col items-center justify-center gap-1">
+                      {inner}
+                    </button>
+                  )}
+                </li>
+              );
+            },
+          )}
+        </ul>
+      </nav>
     </>
   );
 }
