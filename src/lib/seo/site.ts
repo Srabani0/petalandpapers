@@ -16,6 +16,9 @@ export const SITE = {
   shortDescription:
     "Handmade, customizable gifts — scrapbooks, explosion boxes, crochet bouquets, keychains, frames and hampers — crafted to order in India.",
   email: process.env.CONTACT_RECEIVER_EMAIL || "srabaninahak664@gmail.com",
+  // Same number as the WhatsApp chat button.
+  phone: "+91 84880 82783",
+  whatsapp: "918488082783",
   locale: "en_IN",
   country: "IN",
   currency: "INR",

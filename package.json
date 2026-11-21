@@ -14,7 +14,8 @@
     "db:seed:studio": "tsx prisma/seed-studio.ts",
     "studio:library": "tsx scripts/studio-library/generate.ts",
     "studio:library:3d": "tsx scripts/studio-library/fluent3d.ts",
-    "studio:library:chenille": "tsx scripts/studio-library/pipecleaner.ts"
+    "studio:library:chenille": "tsx scripts/studio-library/pipecleaner.ts",
+    "studio:thumbnails": "tsx scripts/studio-thumbnails.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -41,9 +42,13 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@fontsource/bebas-neue": "^5.3.0",
     "@fontsource/dancing-script": "^5.3.0",
     "@fontsource/fredoka": "^5.3.0",
     "@fontsource/great-vibes": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/lobster": "^5.3.0",
+    "@fontsource/montserrat": "^5.3.0",
     "@fontsource/pacifico": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
     "@fontsource/poppins": "^5.3.0",

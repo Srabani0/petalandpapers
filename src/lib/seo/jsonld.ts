@@ -42,6 +42,7 @@ export function organizationJsonLd(): Json {
       "@type": "ContactPoint",
       contactType: "customer support",
       email: SITE.email,
+      telephone: SITE.phone,
       areaServed: "IN",
       availableLanguage: ["English", "Hindi"],
     },

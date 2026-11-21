@@ -2,13 +2,20 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Flower2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ShowcaseImage {
   url: string;
   alt: string;
 }
+
+/** Handmade pipe-cleaner flowers shown in any slot that has no photo yet. */
+const FALLBACK_FLOWERS = [
+  { src: "/studio/library/chenille/sunflower-classic.webp", alt: "Handmade pipe-cleaner sunflower", bg: "from-[#fff6d8] to-cream-dark" },
+  { src: "/studio/library/chenille/rose-pink.webp", alt: "Handmade pipe-cleaner pink rose", bg: "from-blush-light to-cream-dark" },
+  { src: "/studio/library/chenille/daisy-lilac.webp", alt: "Handmade pipe-cleaner lilac daisy", bg: "from-[#efe8fb] to-cream-dark" },
+  { src: "/studio/library/chenille/tulip-red.webp", alt: "Handmade pipe-cleaner red tulip", bg: "from-[#fde7e4] to-cream-dark" },
+];
 
 const SLOTS = [
   {
@@ -68,9 +75,14 @@ export function BouquetShowcase({ images }: { images: ShowcaseImage[] }) {
                 className="object-cover transition-transform duration-500 group-hover:scale-110"
               />
             ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-blush-light to-cream-dark text-blush-dark">
-                <Flower2 className="h-6 w-6" strokeWidth={1.25} />
-                <span className="font-script text-base">coming soon</span>
+              <div className={cn("relative h-full w-full bg-gradient-to-br", FALLBACK_FLOWERS[i % FALLBACK_FLOWERS.length].bg)}>
+                <Image
+                  src={FALLBACK_FLOWERS[i % FALLBACK_FLOWERS.length].src}
+                  alt={FALLBACK_FLOWERS[i % FALLBACK_FLOWERS.length].alt}
+                  fill
+                  sizes="(min-width: 768px) 260px, 45vw"
+                  className="object-contain p-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
+                />
               </div>
             )}
           </motion.div>
