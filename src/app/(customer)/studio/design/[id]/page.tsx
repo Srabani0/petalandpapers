@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getCategoryElements, getOwnDesign } from "@/lib/studio/server";
+import { designPrice, getCategoryElements, getOwnDesign } from "@/lib/studio/server";
+import { BOUQUET_CATEGORY_SLUG } from "@/lib/studio/bouquet";
 import { parseDesignDoc } from "@/lib/studio/doc";
 import { CustomerStudio } from "@/components/studio/CustomerStudio";
 
@@ -46,7 +47,12 @@ export default async function DesignPage({ params }: Props) {
       kind={design.template.category.kind}
       templateName={design.template.name}
       sizeLabel={design.template.sizeLabel}
-      price={Number(design.template.price)}
+      price={designPrice(design.template.price, design.canvas)}
+      editBouquetHref={
+        design.template.category.slug === BOUQUET_CATEGORY_SLUG && parsed.doc.meta?.bouquet && design.status === "DRAFT"
+          ? `/studio/bouquet?design=${design.id}`
+          : undefined
+      }
       categorySlug={design.template.category.slug}
       categoryName={design.template.category.name}
       ordered={design.status === "ORDERED"}

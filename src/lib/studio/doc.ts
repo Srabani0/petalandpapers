@@ -63,9 +63,14 @@ const imageNode = z.object({
   flipX: z.boolean(),
 });
 
+/** Photo frame shapes (rect uses cornerRadius). */
+export const PHOTO_MASKS = ["rect", "circle", "heart", "star", "arch", "hexagon"] as const;
+export type PhotoMask = (typeof PHOTO_MASKS)[number];
+
 const photoNode = z.object({
   ...base,
   type: z.literal("photo"),
+  mask: z.enum(PHOTO_MASKS).optional(),
   src: assetUrl.nullable(),
   placeholder: z.string().max(40),
   cornerRadius: z.number().min(0).max(2000),
@@ -93,6 +98,8 @@ const textNode = z.object({
   letterSpacing: z.number().min(-50).max(200),
   stroke: color,
   strokeWidth: z.number().min(0).max(50),
+  /** -100…100: bends the text into an arc (positive = arch, negative = smile). */
+  curve: z.number().min(-100).max(100).optional(),
 });
 
 const shapeNode = z.object({
@@ -104,7 +111,55 @@ const shapeNode = z.object({
   cornerRadius: z.number().min(0).max(2000),
 });
 
-export const designNodeSchema = z.discriminatedUnion("type", [imageNode, photoNode, textNode, shapeNode]);
+/** Local date-time as typed by the customer, e.g. "2024-02-14T21:30". */
+const localDateTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Invalid date");
+
+const qrNode = z.object({
+  ...base,
+  type: z.literal("qr"),
+  data: z.string().min(1).max(500),
+  fg: color,
+  bg: color,
+});
+
+/** The real night sky over a place at a moment (stars + constellations). */
+const starMapNode = z.object({
+  ...base,
+  type: z.literal("starmap"),
+  date: localDateTime,
+  /** Minutes east of UTC for the date above (IST = 330). */
+  utcOffset: z.number().int().min(-720).max(840),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  place: z.string().max(80),
+  sky: color,
+  starColor: color,
+  lines: z.boolean(),
+  grid: z.boolean(),
+});
+
+/** The moon's phase on a date. */
+const moonNode = z.object({
+  ...base,
+  type: z.literal("moon"),
+  date: localDateTime,
+  lit: color,
+  dark: color,
+});
+
+export const designNodeSchema = z.discriminatedUnion("type", [imageNode, photoNode, textNode, shapeNode, qrNode, starMapNode, moonNode]);
+
+/** Bouquet Builder recipe — what the workshop makes; the price is computed from it on the server. */
+export const bouquetRecipeSchema = z.object({
+  size: z.enum(["mini", "classic", "grand"]),
+  flowers: z.array(z.object({ id: z.string().min(1).max(40), count: z.number().int().min(1).max(30) })).max(20),
+  wrap: z.string().min(1).max(20),
+  ribbon: z.string().min(1).max(20),
+  fillers: z.array(z.string().min(1).max(20)).max(6),
+  message: z.string().max(120),
+  from: z.string().max(40),
+});
+export type BouquetRecipe = z.infer<typeof bouquetRecipeSchema>;
 
 export const designDocSchema = z.object({
   version: z.literal(1),
@@ -117,6 +172,7 @@ export const designDocSchema = z.object({
   }),
   nodes: z.array(designNodeSchema).max(MAX_NODES),
   uploads: z.array(assetUrl).max(MAX_UPLOADS),
+  meta: z.object({ bouquet: bouquetRecipeSchema.optional() }).optional(),
 });
 
 export type DesignDoc = z.infer<typeof designDocSchema>;
@@ -125,6 +181,9 @@ export type ImageNode = z.infer<typeof imageNode>;
 export type PhotoNode = z.infer<typeof photoNode>;
 export type TextNode = z.infer<typeof textNode>;
 export type ShapeNode = z.infer<typeof shapeNode>;
+export type QrNode = z.infer<typeof qrNode>;
+export type StarMapNode = z.infer<typeof starMapNode>;
+export type MoonNode = z.infer<typeof moonNode>;
 export type NodeType = DesignNode["type"];
 
 /** Parses untrusted JSON into a DesignDoc, or returns the first problem. */
@@ -276,6 +335,49 @@ export function makeImage(
     height,
     ...over,
   };
+}
+
+const square = (doc: Pick<DesignDoc, "width" | "height">, f: number) => Math.round(Math.min(doc.width, doc.height) * f);
+const centred = (doc: Pick<DesignDoc, "width" | "height">, w: number, h: number) => ({
+  x: Math.round((doc.width - w) / 2),
+  y: Math.round((doc.height - h) / 2),
+  width: w,
+  height: h,
+});
+
+/** "2024-02-14T21:30" for now in the given UTC offset. */
+export function localNow(utcOffset = 330) {
+  return new Date(Date.now() + utcOffset * 60000).toISOString().slice(0, 16);
+}
+
+export function makeQr(doc: Pick<DesignDoc, "width" | "height">, over: Partial<QrNode> = {}): QrNode {
+  const size = square(doc, 0.24);
+  return { ...baseDefaults, id: uid(), type: "qr", data: "https://www.petalandpapers.com", fg: "#1e2a4a", bg: "#ffffff", ...centred(doc, size, size), ...over };
+}
+
+export function makeStarMap(doc: Pick<DesignDoc, "width" | "height">, over: Partial<StarMapNode> = {}): StarMapNode {
+  const size = square(doc, 0.6);
+  return {
+    ...baseDefaults,
+    id: uid(),
+    type: "starmap",
+    date: localNow(330),
+    utcOffset: 330,
+    lat: 28.6139,
+    lon: 77.209,
+    place: "New Delhi, India",
+    sky: "#141c38",
+    starColor: "#ffffff",
+    lines: true,
+    grid: false,
+    ...centred(doc, size, size),
+    ...over,
+  };
+}
+
+export function makeMoon(doc: Pick<DesignDoc, "width" | "height">, over: Partial<MoonNode> = {}): MoonNode {
+  const size = square(doc, 0.3);
+  return { ...baseDefaults, id: uid(), type: "moon", date: localNow(330), lit: "#f4ecd8", dark: "#1f2747", ...centred(doc, size, size), ...over };
 }
 
 /** Duplicates a node with a fresh id, nudged so the copy is visible. */

@@ -17,6 +17,46 @@ import { prisma } from "../src/lib/prisma";
 import { SIZE_PRESETS, parseDesignDoc } from "../src/lib/studio/doc";
 import { buildStarter } from "../src/lib/studio/starters";
 import { STICKERS, STUDIO_SEED } from "./studio-stickers";
+import { BOUQUET_CANVAS, BOUQUET_CATEGORY_SLUG, BOUQUET_SIZES, DEFAULT_RECIPE, buildBouquetDoc } from "../src/lib/studio/bouquet";
+
+/** The Bouquet Builder's carrier category + template (the price comes from each recipe). */
+async function seedBouquetBuilder() {
+  let category = await prisma.designCategory.findUnique({ where: { slug: BOUQUET_CATEGORY_SLUG } });
+  if (!category) {
+    const product = await prisma.product.findUnique({ where: { sku: "PIPE-001" } });
+    if (!product) return console.warn("! Bouquet Builder: product PIPE-001 not found — skipped");
+    category = await prisma.designCategory.create({
+      data: {
+        name: "Build a Bouquet",
+        slug: BOUQUET_CATEGORY_SLUG,
+        description: "Pick every pipe-cleaner flower, the wrapping paper, ribbon and gift tag — and watch your bouquet come together.",
+        kind: "STANDARD",
+        productId: product.id,
+        sortOrder: 0,
+        isActive: true,
+      },
+    });
+    console.log("+ Build a Bouquet: created");
+  }
+  const exists = await prisma.designTemplate.findFirst({ where: { categoryId: category.id } });
+  if (exists) return;
+  const parsed = parseDesignDoc(buildBouquetDoc(DEFAULT_RECIPE));
+  if ("error" in parsed) throw new Error(parsed.error);
+  await prisma.designTemplate.create({
+    data: {
+      categoryId: category.id,
+      name: "Pipe Cleaner Bouquet",
+      sizeLabel: "Handmade to order",
+      width: BOUQUET_CANVAS.width,
+      height: BOUQUET_CANVAS.height,
+      price: BOUQUET_SIZES[0].base,
+      canvas: parsed.doc as unknown as Prisma.InputJsonValue,
+      isActive: true,
+      sortOrder: 0,
+    },
+  });
+  console.log("  + template Pipe Cleaner Bouquet");
+}
 
 const STICKER_DIR = path.join(process.cwd(), "public", "studio", "stickers");
 
@@ -92,6 +132,8 @@ async function main() {
       }
     }
   }
+
+  await seedBouquetBuilder();
 
   // 4. Sticker library rows, per category.
   const categories = await prisma.designCategory.findMany({ select: { id: true, slug: true, name: true } });

@@ -1,7 +1,10 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore } from "react";
-import { Stage, Layer, Group, Rect, Ellipse, Text as KText, Image as KImage, Transformer, Line } from "react-konva";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Stage, Layer, Group, Rect, Ellipse, Text as KText, TextPath as KTextPath, Image as KImage, Transformer, Line, Shape } from "react-konva";
+import QRCode from "qrcode";
+import { curvedTextPath, moonPhase, skyAt, starRadius, traceMoonLit, tracePhotoMask } from "@/lib/studio/smart";
+import { CONSTELLATION_LINES, STARS } from "@/lib/studio/sky-data";
 import Konva from "konva";
 import {
   MIN_SIZE,
@@ -14,6 +17,9 @@ import {
   type PhotoNode,
   type ShapeNode,
   type TextNode,
+  type QrNode,
+  type StarMapNode,
+  type MoonNode,
 } from "@/lib/studio/doc";
 import { STUDIO_FONTS, loadStudioFonts } from "@/components/studio/fonts";
 import { loadImage, useLoadedImage } from "@/components/studio/editor/images";
@@ -131,25 +137,23 @@ function PhotoContent({ node, editable }: { node: PhotoNode; editable: boolean }
 
   return (
     <>
-      <Rect
+      <Shape
         width={node.width}
         height={node.height}
         fill={node.fill}
         stroke={node.strokeWidth > 0 ? node.stroke : undefined}
         strokeWidth={node.strokeWidth}
-        cornerRadius={node.cornerRadius}
+        sceneFunc={(ctx, shape) => {
+          ctx.beginPath();
+          tracePhotoMask(ctx, node.mask, 0, 0, node.width, node.height, node.cornerRadius);
+          ctx.fillStrokeShape(shape);
+        }}
         {...shadowProps(node.shadow, Math.min(node.width, node.height))}
       />
       <Group
         clipFunc={(ctx) => {
-          const r = Math.min(innerRadius, inner.w / 2, inner.h / 2);
           ctx.beginPath();
-          ctx.moveTo(inner.x + r, inner.y);
-          ctx.arcTo(inner.x + inner.w, inner.y, inner.x + inner.w, inner.y + inner.h, r);
-          ctx.arcTo(inner.x + inner.w, inner.y + inner.h, inner.x, inner.y + inner.h, r);
-          ctx.arcTo(inner.x, inner.y + inner.h, inner.x, inner.y, r);
-          ctx.arcTo(inner.x, inner.y, inner.x + inner.w, inner.y, r);
-          ctx.closePath();
+          tracePhotoMask(ctx, node.mask, inner.x, inner.y, inner.w, inner.h, innerRadius);
         }}
       >
         {image && imageBox ? (
@@ -179,6 +183,28 @@ function PhotoContent({ node, editable }: { node: PhotoNode; editable: boolean }
 }
 
 function TextContent({ node, hidden }: { node: TextNode; hidden: boolean }) {
+  if (node.curve) {
+    const { d } = curvedTextPath(node.width, node.fontSize, node.curve);
+    return (
+      <KTextPath
+        data={d}
+        text={node.text || " "}
+        fontFamily={STUDIO_FONTS[node.fontFamily]?.family ?? STUDIO_FONTS.inter.family}
+        fontSize={node.fontSize}
+        fontStyle={fontStyle(node)}
+        textDecoration={node.underline ? "underline" : ""}
+        align="center"
+        textBaseline="alphabetic"
+        letterSpacing={node.letterSpacing}
+        fill={node.fill}
+        stroke={node.strokeWidth > 0 ? node.stroke : undefined}
+        strokeWidth={node.strokeWidth}
+        fillAfterStrokeEnabled
+        visible={!hidden}
+        {...shadowProps(node.shadow, node.fontSize * 2)}
+      />
+    );
+  }
   return (
     <KText
       text={node.text || " "}
@@ -197,6 +223,170 @@ function TextContent({ node, hidden }: { node: TextNode; hidden: boolean }) {
       visible={!hidden}
       {...shadowProps(node.shadow, node.fontSize * 2)}
     />
+  );
+}
+
+/** Custom-drawn elements are hit-tested by their whole box. */
+function boxHit(w: number, h: number) {
+  return (ctx: Konva.Context, shape: Konva.Shape) => {
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.closePath();
+    ctx.fillStrokeShape(shape);
+  };
+}
+
+function QrContent({ node }: { node: QrNode }) {
+  const modules = useMemo(() => {
+    try {
+      return QRCode.create(node.data, { errorCorrectionLevel: "M" }).modules;
+    } catch {
+      return null;
+    }
+  }, [node.data]);
+  return (
+    <Shape
+      width={node.width}
+      height={node.height}
+      hitFunc={boxHit(node.width, node.height)}
+      sceneFunc={(ctx) => {
+        const c = ctx._context;
+        const size = Math.min(node.width, node.height);
+        const ox = (node.width - size) / 2;
+        const oy = (node.height - size) / 2;
+        c.fillStyle = node.bg;
+        c.fillRect(ox, oy, size, size);
+        if (!modules) return;
+        const n = modules.size;
+        const cell = size / (n + 4); // 2-module quiet zone each side
+        c.fillStyle = node.fg;
+        for (let r = 0; r < n; r++) {
+          let run = -1;
+          for (let col = 0; col <= n; col++) {
+            const dark = col < n && modules.get(r, col);
+            if (dark && run < 0) run = col;
+            if (!dark && run >= 0) {
+              // Slight overlap avoids hairline gaps when printed.
+              c.fillRect(ox + (run + 2) * cell, oy + (r + 2) * cell, (col - run) * cell + 0.3, cell + 0.3);
+              run = -1;
+            }
+          }
+        }
+      }}
+    />
+  );
+}
+
+function StarMapContent({ node }: { node: StarMapNode }) {
+  const sky = useMemo(
+    () => skyAt(STARS, CONSTELLATION_LINES, node.date, node.utcOffset, node.lat, node.lon),
+    [node.date, node.utcOffset, node.lat, node.lon],
+  );
+  return (
+    <Shape
+      width={node.width}
+      height={node.height}
+      hitFunc={boxHit(node.width, node.height)}
+      sceneFunc={(ctx) => {
+        const c = ctx._context;
+        const R = Math.min(node.width, node.height) / 2;
+        const cx = node.width / 2;
+        const cy = node.height / 2;
+        c.save();
+        c.beginPath();
+        c.arc(cx, cy, R, 0, Math.PI * 2);
+        c.fillStyle = node.sky;
+        c.fill();
+        c.clip();
+        c.strokeStyle = node.starColor;
+        if (node.grid) {
+          c.globalAlpha = 0.16;
+          c.lineWidth = R * 0.003;
+          for (const z of [30, 60]) {
+            c.beginPath();
+            c.arc(cx, cy, R * Math.tan((z * Math.PI) / 360), 0, Math.PI * 2);
+            c.stroke();
+          }
+          c.beginPath();
+          c.moveTo(cx - R, cy);
+          c.lineTo(cx + R, cy);
+          c.moveTo(cx, cy - R);
+          c.lineTo(cx, cy + R);
+          c.stroke();
+        }
+        if (node.lines) {
+          c.globalAlpha = 0.42;
+          c.lineWidth = Math.max(0.6, R * 0.0045);
+          c.beginPath();
+          for (const [x1, y1, x2, y2] of sky.segments) {
+            c.moveTo(cx + x1 * R, cy + y1 * R);
+            c.lineTo(cx + x2 * R, cy + y2 * R);
+          }
+          c.stroke();
+        }
+        c.globalAlpha = 1;
+        c.fillStyle = node.starColor;
+        for (const p of sky.points) {
+          c.beginPath();
+          c.arc(cx + p.x * R, cy + p.y * R, Math.max(0.5, R * starRadius(p.mag)), 0, Math.PI * 2);
+          c.fill();
+        }
+        c.restore();
+        // Fine ring around the chart.
+        c.beginPath();
+        c.arc(cx, cy, R - R * 0.006, 0, Math.PI * 2);
+        c.strokeStyle = node.starColor;
+        c.globalAlpha = 0.85;
+        c.lineWidth = R * 0.012;
+        c.stroke();
+        c.globalAlpha = 1;
+      }}
+    />
+  );
+}
+
+function MoonContent({ node }: { node: MoonNode }) {
+  const { phase } = moonPhase(node.date, 330);
+  return (
+    <Shape
+      width={node.width}
+      height={node.height}
+      hitFunc={boxHit(node.width, node.height)}
+      sceneFunc={(ctx) => {
+        const c = ctx._context;
+        const r = Math.min(node.width, node.height) / 2 - 1;
+        const cx = node.width / 2;
+        const cy = node.height / 2;
+        c.beginPath();
+        c.arc(cx, cy, r, 0, Math.PI * 2);
+        c.fillStyle = node.dark;
+        c.fill();
+        c.beginPath();
+        traceMoonLit(c, cx, cy, r, phase);
+        const g = c.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+        g.addColorStop(0, node.lit);
+        g.addColorStop(1, shade(node.lit, -0.12));
+        c.fillStyle = g;
+        c.fill();
+      }}
+    />
+  );
+}
+
+/** Darken (t < 0) or lighten a hex colour a little. */
+function shade(hex: string, t: number) {
+  const v = hex.replace("#", "").slice(0, 6);
+  const target = t < 0 ? 0 : 255;
+  return (
+    "#" +
+    [0, 2, 4]
+      .map((i) => {
+        const x = parseInt(v.slice(i, i + 2), 16);
+        return Math.round(x + (target - x) * Math.abs(t))
+          .toString(16)
+          .padStart(2, "0");
+      })
+      .join("")
   );
 }
 
@@ -494,10 +684,14 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
 
     if (node.type === "text") {
       const fontChanged = Math.abs(sy - 1) > 0.001;
+      const width = Math.max(MIN_SIZE * 4, node.width * sx);
+      const fontSize = fontChanged ? Math.min(800, Math.max(4, node.fontSize * sy)) : node.fontSize;
       onUpdateNode(node.id, {
         ...base,
-        width: Math.max(MIN_SIZE * 4, node.width * sx),
-        fontSize: fontChanged ? Math.min(800, Math.max(4, node.fontSize * sy)) : node.fontSize,
+        width,
+        fontSize,
+        // Curved text: keep the box height in step with the arc.
+        ...(node.curve ? { height: Math.round(curvedTextPath(width, fontSize, node.curve).height) } : {}),
       });
       return;
     }
@@ -609,6 +803,9 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
                 {node.type === "photo" ? <PhotoContent node={node} editable={!exporting} /> : null}
                 {node.type === "text" ? <TextContent node={node} hidden={editingId === node.id} /> : null}
                 {node.type === "rect" || node.type === "ellipse" ? <ShapeContent node={node} /> : null}
+                {node.type === "qr" ? <QrContent node={node} /> : null}
+                {node.type === "starmap" ? <StarMapContent node={node} /> : null}
+                {node.type === "moon" ? <MoonContent node={node} /> : null}
               </Group>
             );
           })}
@@ -625,7 +822,7 @@ export const CanvasStage = forwardRef<CanvasHandle, Props>(function CanvasStage(
             visible={!exporting}
             rotateEnabled={!!selected && !selected.locked}
             resizeEnabled={!!selected && !selected.locked}
-            keepRatio={selected?.type === "image" || selected?.type === "photo"}
+            keepRatio={["image", "photo", "qr", "starmap", "moon"].includes(selected?.type ?? "")}
             enabledAnchors={
               transformerIsText
                 ? ["top-left", "top-right", "bottom-left", "bottom-right", "middle-left", "middle-right"]

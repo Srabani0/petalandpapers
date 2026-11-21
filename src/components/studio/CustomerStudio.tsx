@@ -4,7 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, Loader2, Save, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, Save, ShoppingBag, Flower2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { DesignDoc, StudioKind } from "@/lib/studio/doc";
 import type { StudioElement } from "@/components/studio/editor/Sidebar";
@@ -30,6 +30,7 @@ export function CustomerStudio({
   sizeLabel,
   price,
   categorySlug,
+  editBouquetHref,
   categoryName,
   ordered,
   inCart,
@@ -42,6 +43,8 @@ export function CustomerStudio({
   sizeLabel: string;
   price: number;
   categorySlug: string;
+  /** Bouquet Builder designs: link back to the builder to change the flowers. */
+  editBouquetHref?: string;
   categoryName: string;
   ordered: boolean;
   inCart: boolean;
@@ -196,7 +199,7 @@ export function CustomerStudio({
       header={
         <div className="flex items-center gap-3">
           <Link
-            href={`/studio/${categorySlug}`}
+            href={editBouquetHref ?? `/studio/${categorySlug}`}
             aria-label={`Back to ${categoryName}`}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-navy hover:bg-cream-dark"
           >
@@ -208,6 +211,14 @@ export function CustomerStudio({
               {sizeLabel} · ₹{price.toFixed(0)}
             </p>
           </div>
+          {editBouquetHref ? (
+            <Link
+              href={editBouquetHref}
+              className="ml-1 hidden shrink-0 items-center gap-1 rounded-full border border-gold/50 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold-dark hover:bg-gold/20 sm:inline-flex"
+            >
+              <Flower2 className="h-3.5 w-3.5" /> Edit flowers
+            </Link>
+          ) : null}
         </div>
       }
       renderActions={(api) =>

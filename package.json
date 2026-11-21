@@ -15,7 +15,8 @@
     "studio:library": "tsx scripts/studio-library/generate.ts",
     "studio:library:3d": "tsx scripts/studio-library/fluent3d.ts",
     "studio:library:chenille": "tsx scripts/studio-library/pipecleaner.ts",
-    "studio:thumbnails": "tsx scripts/studio-thumbnails.ts"
+    "studio:thumbnails": "tsx scripts/studio-thumbnails.ts",
+    "studio:library:bouquet": "tsx scripts/studio-library/bouquet.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -32,6 +33,7 @@
     "next": "16.2.12",
     "pdfkit": "^0.19.1",
     "prisma": "^7.9.1",
+    "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-konva": "^19.2.1",
@@ -57,6 +59,7 @@
     "@types/node": "^20",
     "@types/opentype.js": "^1.3.10",
     "@types/pdfkit": "^0.17.6",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.187.0",

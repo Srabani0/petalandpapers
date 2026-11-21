@@ -2,7 +2,22 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { uploadImage, deleteImage } from "@/lib/cloudinary";
 import { getOrCreateCart, MAX_DESIGN_QUANTITY } from "@/lib/cart";
-import { docForCustomer, parseDesignDoc, type DesignDoc } from "@/lib/studio/doc";
+import { docForCustomer, parseDesignDoc, type BouquetRecipe, type DesignDoc } from "@/lib/studio/doc";
+import { BOUQUET_CATEGORY_SLUG, buildBouquetDoc, priceRecipe } from "@/lib/studio/bouquet";
+
+/**
+ * What a design costs: its template's price, or — for Bouquet Builder
+ * designs — the price of the recipe it carries (always computed here).
+ */
+export function designPrice(templatePrice: { toString(): string }, canvas: unknown): number {
+  const parsed = parseDesignDoc(canvas);
+  const recipe = "doc" in parsed ? parsed.doc.meta?.bouquet : undefined;
+  if (recipe) {
+    const priced = priceRecipe(recipe);
+    if ("total" in priced) return priced.total;
+  }
+  return Number(templatePrice);
+}
 
 /** Hard cap on a single rendered file (Vercel's request body limit is ~4.5MB for both). */
 export const MAX_RENDER_BYTES = 4 * 1024 * 1024;
@@ -198,6 +213,13 @@ export async function saveDesign(
     if (oldId) deleteImage(oldId).catch((err) => console.warn("[studio] couldn't delete old render", err));
   }
 
+  if (parsed.doc.meta?.bouquet) {
+    await prisma.cartItem.updateMany({
+      where: { designId },
+      data: { unitPrice: designPrice(updated.template.price, parsed.doc) },
+    });
+  }
+
   return { design: updated };
 }
 
@@ -236,6 +258,7 @@ export async function addDesignToCart(
     return { error: "This template isn't available any more." };
   }
 
+  const unitPrice = designPrice(template.price, design.canvas);
   const cart = await getOrCreateCart(userId);
   const existing = cart.items.find((item) => item.designId === designId);
   if (existing) {
@@ -243,7 +266,7 @@ export async function addDesignToCart(
       where: { id: existing.id },
       data: {
         quantity: Math.min(existing.quantity + quantity, MAX_DESIGN_QUANTITY),
-        unitPrice: template.price,
+        unitPrice,
       },
     });
     return { ok: true as const };
@@ -254,7 +277,7 @@ export async function addDesignToCart(
       cartId: cart.id,
       productId: template.category.productId,
       quantity: Math.min(quantity, MAX_DESIGN_QUANTITY),
-      unitPrice: template.price,
+      unitPrice,
       designId,
     },
   });
@@ -262,3 +285,53 @@ export async function addDesignToCart(
 }
 
 export type { DesignDoc };
+
+// ─── Bouquet Builder ───────────────────────────────────────────────────────
+
+export async function getBouquetTemplate() {
+  return prisma.designTemplate.findFirst({
+    where: { isActive: true, category: { slug: BOUQUET_CATEGORY_SLUG, isActive: true } },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, width: true, height: true },
+  });
+}
+
+/**
+ * Creates (or updates) a customer's bouquet design from a recipe. The picture
+ * is always rebuilt here from the recipe, so it can't drift from what's paid for.
+ */
+export async function saveBouquet(
+  userId: string,
+  recipe: BouquetRecipe,
+  designId?: string,
+): Promise<{ error: string; status?: number } | { id: string }> {
+  const priced = priceRecipe(recipe);
+  if ("error" in priced) return { error: priced.error, status: 400 };
+  const template = await getBouquetTemplate();
+  if (!template) return { error: "The bouquet builder is being set up. Please try again soon.", status: 503 };
+
+  const doc = buildBouquetDoc(recipe);
+  if (doc.width !== template.width || doc.height !== template.height) {
+    return { error: "The bouquet builder is being set up. Please try again soon.", status: 503 };
+  }
+  const canvas = doc as unknown as Prisma.InputJsonValue;
+
+  if (designId) {
+    const design = await prisma.design.findUnique({ where: { id: designId } });
+    if (design && design.customerId === userId && design.status === "DRAFT" && design.templateId === template.id) {
+      // The old renders no longer match — the editor re-renders on the next save.
+      await prisma.design.update({
+        where: { id: designId },
+        data: { canvas, previewUrl: null, previewPublicId: null, printUrl: null, printPublicId: null },
+      });
+      await prisma.cartItem.updateMany({ where: { designId }, data: { unitPrice: priced.total } });
+      for (const id of [design.previewPublicId, design.printPublicId]) {
+        if (id) deleteImage(id).catch(() => undefined);
+      }
+      return { id: designId };
+    }
+  }
+
+  const created = await prisma.design.create({ data: { customerId: userId, templateId: template.id, canvas } });
+  return { id: created.id };
+}

@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- thumbnails of user/admin uploads; next/image adds nothing here */
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Shapes,
   ImagePlus,
@@ -18,6 +18,13 @@ import {
   Minus,
   Images,
   X,
+  Sparkles,
+  QrCode,
+  Moon,
+  Star,
+  Heart,
+  CircleUser,
+  Spline,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DesignDoc } from "@/lib/studio/doc";
@@ -28,6 +35,7 @@ import { StockPanel, useStockAvailable } from "@/components/studio/editor/StockP
 
 export type TextPreset = "heading" | "subheading" | "body" | "script";
 export type ShapePreset = "rect" | "rounded" | "circle" | "line" | "photo";
+export type SmartPreset = "starmap" | "moon" | "qr" | "curved" | "heartPhoto" | "circlePhoto";
 
 export interface StudioElement {
   id: string;
@@ -38,6 +46,7 @@ export interface StudioElement {
 
 const TABS = [
   { key: "elements", label: "Stickers", icon: Sticker },
+  { key: "magic", label: "Magic", icon: Sparkles },
   { key: "images", label: "Images", icon: Images },
   { key: "photos", label: "Uploads", icon: ImagePlus },
   { key: "text", label: "Text", icon: Type },
@@ -71,6 +80,7 @@ export function Sidebar({
   onUsePhoto,
   onAddText,
   onAddShape,
+  onAddSmart,
   onBackground,
   onUploadBackground,
   mobileOpen,
@@ -85,6 +95,7 @@ export function Sidebar({
   onUsePhoto: (src: string) => void;
   onAddText: (preset: TextPreset) => void;
   onAddShape: (preset: ShapePreset) => void;
+  onAddSmart: (preset: SmartPreset) => void;
   onBackground: (patch: Partial<DesignDoc["background"]>) => void;
   onUploadBackground: (file: File) => void;
   /** Phones: whether the panel is open as a bottom sheet over the canvas. */
@@ -111,6 +122,7 @@ export function Sidebar({
   const pickPhoto = thenClose(onUsePhoto);
   const addText = thenClose(onAddText);
   const addShape = thenClose(onAddShape);
+  const addSmart = thenClose(onAddSmart);
   const photoInput = useRef<HTMLInputElement>(null);
   const bgInput = useRef<HTMLInputElement>(null);
 
@@ -239,6 +251,51 @@ export function Sidebar({
             <TextButton label="Add body text" font="inter" size="text-sm" onClick={() => addText("body")} />
             <TextButton label="Add script text" font="greatVibes" size="text-2xl" onClick={() => addText("script")} />
             <p className="mt-2 text-xs text-muted">Double-click any text on the design to type directly.</p>
+          </div>
+        ) : null}
+
+        {tab === "magic" ? (
+          <div className="flex flex-col gap-2.5">
+            <p className="text-xs text-muted">Special touches that make a gift personal.</p>
+            <MagicCard
+              onClick={() => addSmart("starmap")}
+              title="Star map"
+              text="The real night sky on your special date and place."
+              art={
+                <span className="relative flex h-full w-full items-center justify-center rounded-full bg-[#141c38]">
+                  {[[30, 30], [62, 24], [48, 52], [26, 66], [70, 64], [52, 78], [38, 40]].map(([x, y], i) => (
+                    <span key={i} className="absolute h-1 w-1 rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%` }} />
+                  ))}
+                  <Star className="h-4 w-4 fill-white text-white" />
+                </span>
+              }
+            />
+            <MagicCard
+              onClick={() => addSmart("moon")}
+              title="Moon phase"
+              text="How the moon looked on that night."
+              art={
+                <span className="flex h-full w-full items-center justify-center rounded-full bg-[#1f2747]">
+                  <Moon className="h-6 w-6 fill-[#f4ecd8] text-[#f4ecd8]" />
+                </span>
+              }
+            />
+            <MagicCard
+              onClick={() => addSmart("qr")}
+              title="QR code"
+              text="Link a voice note, video or song — they scan it to play."
+              art={<QrCode className="h-9 w-9 text-navy" strokeWidth={1.5} />}
+            />
+            <MagicCard
+              onClick={() => addSmart("curved")}
+              title="Curved text"
+              text="Words that bend in an arch — great around photos."
+              art={<Spline className="h-8 w-8 text-gold-dark" strokeWidth={1.6} />}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <ShapeButton icon={Heart} label="Heart photo" onClick={() => addSmart("heartPhoto")} />
+              <ShapeButton icon={CircleUser} label="Round photo" onClick={() => addSmart("circlePhoto")} />
+            </div>
           </div>
         ) : null}
 
@@ -376,6 +433,22 @@ function TextButton({
       style={{ fontFamily: STUDIO_FONTS[font].family }}
     >
       {label}
+    </button>
+  );
+}
+
+function MagicCard({ title, text, art, onClick }: { title: string; text: string; art: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center gap-3 rounded-xl border border-border bg-paper p-2.5 text-left transition hover:-translate-y-0.5 hover:border-gold hover:shadow-[0_8px_18px_-12px_rgba(30,42,74,0.45)] active:scale-[0.98]"
+    >
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cream-dark">{art}</span>
+      <span className="min-w-0">
+        <span className="block font-display text-[15px] text-navy">{title}</span>
+        <span className="block text-xs leading-snug text-muted">{text}</span>
+      </span>
     </button>
   );
 }

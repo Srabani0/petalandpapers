@@ -23,6 +23,9 @@ import opentype from "opentype.js";
 import { prisma } from "../src/lib/prisma";
 import { parseDesignDoc, type DesignDoc, type DesignNode, type FontKey, type TextNode } from "../src/lib/studio/doc";
 import { uploadImage } from "../src/lib/cloudinary";
+import QRCode from "qrcode";
+import { SvgPath, curvedTextPoint, moonPhase, skyAt, starRadius, traceMoonLit, tracePhotoMask } from "../src/lib/studio/smart";
+import { CONSTELLATION_LINES, STARS } from "../src/lib/studio/sky-data";
 
 const MAX_SIDE = 800;
 
@@ -137,6 +140,19 @@ function textSvg(node: TextNode, color: string) {
   const emMid = ((font.ascender + font.descender) / 2 / upm) * size;
   let d = "";
   let underline = "";
+  if (node.curve) {
+    const line = (node.text || " ").replace(/\n/g, " ");
+    const total = measure(font, line, size, node.letterSpacing);
+    let dist = (node.width - total) / 2;
+    for (const glyph of font.stringToGlyphs(line)) {
+      const adv = ((glyph.advanceWidth ?? 0) / upm) * size;
+      const pt = curvedTextPoint(node.width, size, node.curve, dist + adv / 2);
+      d += `<path transform="translate(${n(pt.x)} ${n(pt.y)}) rotate(${n(pt.angle)})" d="${glyph.getPath(-adv / 2, 0, size).toPathData(2)}"/>`;
+      dist += adv + node.letterSpacing;
+    }
+    const strokeAttr = node.strokeWidth > 0 ? ` stroke="${node.stroke}" stroke-width="${n(node.strokeWidth)}" paint-order="stroke"` : "";
+    return `<g fill="${color}"${strokeAttr}>${d}</g>`;
+  }
   lines.forEach((line, i) => {
     const w = measure(font, line, size, node.letterSpacing);
     const x0 = node.align === "center" ? (node.width - w) / 2 : node.align === "right" ? node.width - w : 0;
@@ -176,8 +192,12 @@ async function nodeSvg(node: DesignNode, scale: number, defs: string[]) {
     const pad = Math.min(node.padding, node.width / 2 - 1, node.height / 2 - 1);
     const inner = { x: pad, y: pad, w: Math.max(1, node.width - pad * 2), h: Math.max(1, node.height - pad * 2) };
     const clipId = `cl${defId++}`;
-    defs.push(`<clipPath id="${clipId}"><path d="${roundRect(inner.x, inner.y, inner.w, inner.h, Math.max(0, node.cornerRadius - pad))}"/></clipPath>`);
-    const frame = `<path d="${roundRect(0, 0, node.width, node.height, node.cornerRadius)}" fill="${node.fill}"${node.strokeWidth > 0 ? ` stroke="${node.stroke}" stroke-width="${n(node.strokeWidth)}"` : ""}${shadowFilter(node.shadow, size, defs)}/>`;
+    const clip = new SvgPath();
+    tracePhotoMask(clip, node.mask, inner.x, inner.y, inner.w, inner.h, Math.max(0, node.cornerRadius - pad));
+    defs.push(`<clipPath id="${clipId}"><path d="${clip.d}"/></clipPath>`);
+    const outline = new SvgPath();
+    tracePhotoMask(outline, node.mask, 0, 0, node.width, node.height, node.cornerRadius);
+    const frame = `<path d="${outline.d}" fill="${node.fill}"${node.strokeWidth > 0 ? ` stroke="${node.stroke}" stroke-width="${n(node.strokeWidth)}"` : ""}${shadowFilter(node.shadow, size, defs)}/>`;
     let content: string;
     const uri = node.src ? await coverUri(node.src, inner.w * scale, inner.h * scale) : null;
     if (uri) {
@@ -197,6 +217,46 @@ async function nodeSvg(node: DesignNode, scale: number, defs: string[]) {
 
   if (node.type === "text") {
     return `${open}<g${shadowFilter(node.shadow, node.fontSize * 2, defs)}>${textSvg(node, node.fill)}</g></g>`;
+  }
+
+  if (node.type === "qr") {
+    const side = Math.min(node.width, node.height);
+    const ox = (node.width - side) / 2;
+    const oy = (node.height - side) / 2;
+    let body = `<rect x="${n(ox)}" y="${n(oy)}" width="${n(side)}" height="${n(side)}" fill="${node.bg}"/>`;
+    try {
+      const m = QRCode.create(node.data, { errorCorrectionLevel: "M" }).modules;
+      const cell = side / (m.size + 4);
+      let d = "";
+      for (let r = 0; r < m.size; r++) for (let c = 0; c < m.size; c++) if (m.get(r, c)) d += `M${n(ox + (c + 2) * cell)} ${n(oy + (r + 2) * cell)}h${n(cell + 0.2)}v${n(cell + 0.2)}h${n(-cell - 0.2)}Z`;
+      body += `<path d="${d}" fill="${node.fg}"/>`;
+    } catch {
+      /* invalid data — background only */
+    }
+    return `${open}${body}</g>`;
+  }
+
+  if (node.type === "starmap") {
+    const R = Math.min(node.width, node.height) / 2;
+    const cx = node.width / 2;
+    const cy = node.height / 2;
+    const sky = skyAt(STARS, CONSTELLATION_LINES, node.date, node.utcOffset, node.lat, node.lon);
+    const clipId = `sk${defId++}`;
+    defs.push(`<clipPath id="${clipId}"><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}"/></clipPath>`);
+    let body = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}" fill="${node.sky}"/>`;
+    if (node.lines) {
+      const d = sky.segments.map(([x1, y1, x2, y2]) => `M${n(cx + x1 * R)} ${n(cy + y1 * R)}L${n(cx + x2 * R)} ${n(cy + y2 * R)}`).join("");
+      body += `<path d="${d}" stroke="${node.starColor}" stroke-opacity="0.42" stroke-width="${n(Math.max(0.6, R * 0.0045))}" fill="none"/>`;
+    }
+    body += sky.points.map((pt) => `<circle cx="${n(cx + pt.x * R)}" cy="${n(cy + pt.y * R)}" r="${n(Math.max(0.5, R * starRadius(pt.mag)))}" fill="${node.starColor}"/>`).join("");
+    return `${open}<g clip-path="url(#${clipId})">${body}</g><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.994)}" fill="none" stroke="${node.starColor}" stroke-opacity="0.85" stroke-width="${n(R * 0.012)}"/></g>`;
+  }
+
+  if (node.type === "moon") {
+    const r = Math.min(node.width, node.height) / 2 - 1;
+    const lit = new SvgPath();
+    traceMoonLit(lit, node.width / 2, node.height / 2, r, moonPhase(node.date, 330).phase);
+    return `${open}<circle cx="${n(node.width / 2)}" cy="${n(node.height / 2)}" r="${n(r)}" fill="${node.dark}"/><path d="${lit.d}" fill="${node.lit}"/></g>`;
   }
 
   const stroke = node.strokeWidth > 0 ? ` stroke="${node.stroke}" stroke-width="${n(node.strokeWidth)}"` : "";
@@ -259,7 +319,8 @@ async function main() {
   console.log(`✓ ${ok} preview(s) ${dry ? `written to ${dry}` : local ? "saved to public/studio/thumbnails" : "uploaded"}`);
 }
 
-main()
+// Only run when executed directly (renderDoc can be imported).
+if (process.argv[1]?.includes("studio-thumbnails")) main()
   .catch((err) => {
     console.error(err);
     process.exitCode = 1;

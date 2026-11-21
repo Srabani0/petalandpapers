@@ -21,7 +21,18 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FONT_KEYS, type DesignNode, type PhotoNode, type TextNode } from "@/lib/studio/doc";
+import {
+  FONT_KEYS,
+  PHOTO_MASKS,
+  type DesignNode,
+  type MoonNode,
+  type PhotoMask,
+  type PhotoNode,
+  type QrNode,
+  type StarMapNode,
+  type TextNode,
+} from "@/lib/studio/doc";
+import { PLACES, SvgPath, curvedTextPath, moonPhase, moonPhaseName, tracePhotoMask } from "@/lib/studio/smart";
 import { STUDIO_FONTS } from "@/components/studio/fonts";
 
 type Patch = (patch: Partial<DesignNode>, key?: string) => void;
@@ -67,7 +78,16 @@ export function PropertiesPanel({
   }
 
   const isLockedForCustomer = mode === "customer" && node.locked;
-  const title = { image: "Image", photo: "Photo frame", text: "Text", rect: "Shape", ellipse: "Shape" }[node.type];
+  const title = {
+    image: "Image",
+    photo: "Photo frame",
+    text: "Text",
+    rect: "Shape",
+    ellipse: "Shape",
+    qr: "QR code",
+    starmap: "Star map",
+    moon: "Moon phase",
+  }[node.type];
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -87,6 +107,9 @@ export function PropertiesPanel({
           {node.type === "photo" ? (
             <PhotoControls node={node} mode={mode} onChange={onChange} onReplacePhoto={onReplacePhoto} />
           ) : null}
+          {node.type === "qr" ? <QrControls node={node} onChange={onChange} /> : null}
+          {node.type === "starmap" ? <StarMapControls node={node} onChange={onChange} /> : null}
+          {node.type === "moon" ? <MoonControls node={node} onChange={onChange} /> : null}
           {node.type === "image" ? (
             <IconToggle
               active={node.flipX}
@@ -263,6 +286,46 @@ function TextControls({ node, onChange }: { node: TextNode; onChange: Patch }) {
         />
         <IconToggle active={node.align === "right"} onClick={() => onChange({ align: "right" })} icon={<AlignRight className="h-4 w-4" />} />
       </div>
+      <Section title="Curve">
+        <Slider
+          label="Bend into an arc"
+          min={-100}
+          max={100}
+          value={Math.round(node.curve ?? 0)}
+          onChange={(v) =>
+            onChange(
+              {
+                curve: v,
+                height: Math.round(
+                  v ? curvedTextPath(node.width, node.fontSize, v).height : node.fontSize * node.lineHeight * Math.max(1, node.text.split("\n").length),
+                ),
+              },
+              "curve",
+            )
+          }
+        />
+        <div className="grid grid-cols-3 gap-1.5">
+          {[
+            { label: "Straight", v: 0 },
+            { label: "Arch", v: 45 },
+            { label: "Smile", v: -45 },
+          ].map((o) => (
+            <SmallButton
+              key={o.label}
+              label={o.label}
+              wide
+              onClick={() =>
+                onChange({
+                  curve: o.v,
+                  height: Math.round(o.v ? curvedTextPath(node.width, node.fontSize, o.v).height : node.fontSize * node.lineHeight * 1.2),
+                })
+              }
+            >
+              {o.label}
+            </SmallButton>
+          ))}
+        </div>
+      </Section>
       <Section title="Spacing & outline">
         <Slider
           label="Line height"
@@ -350,6 +413,26 @@ function PhotoControls({
           />
         </Section>
       ) : null}
+      <Section title="Shape">
+        <div className="grid grid-cols-6 gap-1.5">
+          {PHOTO_MASKS.map((mask) => (
+            <button
+              key={mask}
+              type="button"
+              title={MASK_LABEL[mask]}
+              aria-label={MASK_LABEL[mask]}
+              aria-pressed={(node.mask ?? "rect") === mask}
+              onClick={() => onChange({ mask })}
+              className={cn(
+                "flex aspect-square items-center justify-center rounded-md border transition-colors",
+                (node.mask ?? "rect") === mask ? "border-navy bg-navy text-cream" : "border-border text-navy hover:border-gold",
+              )}
+            >
+              <MaskIcon mask={mask} />
+            </button>
+          ))}
+        </div>
+      </Section>
       <Section title="Frame">
         <ColorRow label="Frame colour" value={node.stroke} onChange={(v) => onChange({ stroke: v }, "stroke")} />
         <Slider
@@ -367,13 +450,15 @@ function PhotoControls({
           value={node.padding}
           onChange={(v) => onChange({ padding: v }, "padding")}
         />
-        <Slider
-          label="Rounded corners"
-          min={0}
-          max={Math.round(Math.min(node.width, node.height) / 2)}
-          value={node.cornerRadius}
-          onChange={(v) => onChange({ cornerRadius: v }, "cornerRadius")}
-        />
+        {(node.mask ?? "rect") === "rect" ? (
+          <Slider
+            label="Rounded corners"
+            min={0}
+            max={Math.round(Math.min(node.width, node.height) / 2)}
+            value={node.cornerRadius}
+            onChange={(v) => onChange({ cornerRadius: v }, "cornerRadius")}
+          />
+        ) : null}
       </Section>
       {mode === "admin" ? (
         <label className="flex flex-col gap-1 text-xs text-muted">
@@ -386,6 +471,120 @@ function PhotoControls({
           />
         </label>
       ) : null}
+    </>
+  );
+}
+
+const MASK_LABEL: Record<PhotoMask, string> = {
+  rect: "Rectangle",
+  circle: "Circle",
+  heart: "Heart",
+  star: "Star",
+  arch: "Arch",
+  hexagon: "Hexagon",
+};
+
+function MaskIcon({ mask }: { mask: PhotoMask }) {
+  const path = new SvgPath();
+  tracePhotoMask(path, mask, 3, 3, 18, 18, 4);
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path d={path.d} fill="currentColor" />
+    </svg>
+  );
+}
+
+const inputClass =
+  "w-full rounded-md border border-border bg-paper px-2.5 py-2 text-sm text-ink focus:border-gold focus:outline-none";
+
+function QrControls({ node, onChange }: { node: QrNode; onChange: Patch }) {
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        Link or text the QR code opens
+        <textarea
+          value={node.data}
+          maxLength={500}
+          rows={2}
+          placeholder="Paste a link — YouTube video, voice note, Instagram, Google Maps…"
+          onChange={(e) => onChange({ data: e.target.value || " " }, "data")}
+          className={cn(inputClass, "resize-y")}
+        />
+      </label>
+      <p className="text-xs text-muted">Tip: upload a voice message or video to Google Drive / YouTube and paste its share link here.</p>
+      <ColorRow label="Code colour" value={node.fg} onChange={(v) => onChange({ fg: v }, "fg")} />
+      <ColorRow label="Background" value={node.bg} onChange={(v) => onChange({ bg: v }, "bg")} />
+    </>
+  );
+}
+
+function StarMapControls({ node, onChange }: { node: StarMapNode; onChange: Patch }) {
+  const known = PLACES.some((p) => p.name === node.place);
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        Date &amp; time (local)
+        <input
+          type="datetime-local"
+          value={node.date}
+          onChange={(e) => e.target.value && onChange({ date: e.target.value.slice(0, 16) }, "date")}
+          className={inputClass}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        Place
+        <select
+          value={known ? node.place : ""}
+          onChange={(e) => {
+            const place = PLACES.find((p) => p.name === e.target.value);
+            if (place) onChange({ place: place.name, lat: place.lat, lon: place.lon, utcOffset: place.tz });
+          }}
+          className={inputClass}
+        >
+          {!known ? <option value="">{node.place || "Custom location"}</option> : null}
+          {PLACES.map((p) => (
+            <option key={p.name} value={p.name}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="text-xs text-muted">
+        The real sky over {node.place || "this place"} at that moment — {Math.abs(node.lat).toFixed(2)}° {node.lat >= 0 ? "N" : "S"},{" "}
+        {Math.abs(node.lon).toFixed(2)}° {node.lon >= 0 ? "E" : "W"}.
+      </p>
+      <ColorRow label="Sky" value={node.sky} onChange={(v) => onChange({ sky: v }, "sky")} />
+      <ColorRow label="Stars" value={node.starColor} onChange={(v) => onChange({ starColor: v }, "starColor")} />
+      <label className="flex items-center gap-2 text-sm text-navy">
+        <input type="checkbox" checked={node.lines} onChange={(e) => onChange({ lines: e.target.checked })} />
+        Constellation lines
+      </label>
+      <label className="flex items-center gap-2 text-sm text-navy">
+        <input type="checkbox" checked={node.grid} onChange={(e) => onChange({ grid: e.target.checked })} />
+        Sky grid
+      </label>
+    </>
+  );
+}
+
+function MoonControls({ node, onChange }: { node: MoonNode; onChange: Patch }) {
+  const { phase, illumination } = moonPhase(node.date, 330);
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-xs text-muted">
+        Date &amp; time
+        <input
+          type="datetime-local"
+          value={node.date}
+          onChange={(e) => e.target.value && onChange({ date: e.target.value.slice(0, 16) }, "date")}
+          className={inputClass}
+        />
+      </label>
+      <p className="rounded-md bg-cream-dark px-3 py-2 text-sm text-navy">
+        {moonPhaseName(phase)} · {Math.round(illumination * 100)}% lit
+      </p>
+      <ColorRow label="Moon" value={node.lit} onChange={(v) => onChange({ lit: v }, "lit")} />
+      <ColorRow label="Shadow" value={node.dark} onChange={(v) => onChange({ dark: v }, "dark")} />
     </>
   );
 }

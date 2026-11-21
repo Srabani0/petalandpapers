@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { BOUQUET_CATEGORY_SLUG } from "@/lib/studio/bouquet";
 import { Box, Truck } from "lucide-react";
 import { Container, Section } from "@/components/ui/Container";
 import { TemplatePicker, type PickerTemplate } from "@/components/studio/TemplatePicker";
@@ -31,6 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function StudioCategoryPage({ params }: Props) {
   const { slug } = await params;
+  if (slug === BOUQUET_CATEGORY_SLUG) redirect("/studio/bouquet");
   const [category, session] = await Promise.all([getStudioCategory(slug), getCurrentUser()]);
   if (!category) notFound();
 

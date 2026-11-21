@@ -6,6 +6,7 @@ import { Container, Section } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { CategoryCover } from "@/components/studio/CategoryCover";
 import { listStudioCategories } from "@/lib/studio/server";
+import { BOUQUET_CATEGORY_SLUG } from "@/lib/studio/bouquet";
 import { parseDesignDoc } from "@/lib/studio/doc";
 
 export const metadata: Metadata = {
@@ -41,7 +42,7 @@ export default async function StudioPage() {
               return (
                 <Link
                   key={c.id}
-                  href={`/studio/${c.slug}`}
+                  href={c.slug === BOUQUET_CATEGORY_SLUG ? "/studio/bouquet" : `/studio/${c.slug}`}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-paper transition-all active:scale-[0.98] hover:-translate-y-1 hover:border-gold/40 hover:shadow-[0_16px_40px_-16px_rgba(30,42,74,0.25)]"
                 >
                   <div className="relative aspect-square overflow-hidden bg-[#ebe7df]">
@@ -65,7 +66,9 @@ export default async function StudioPage() {
                     <div>
                       <h2 className="font-display text-base leading-tight text-navy sm:text-xl">{c.name}</h2>
                       <p className="mt-0.5 text-xs text-muted sm:text-sm">
-                        {c.templateCount} design{c.templateCount === 1 ? "" : "s"} · from ₹{c.startingPrice.toFixed(0)}
+                        {c.slug === BOUQUET_CATEGORY_SLUG
+                          ? "Build your own · pick every flower"
+                          : `${c.templateCount} design${c.templateCount === 1 ? "" : "s"} · from ₹${c.startingPrice.toFixed(0)}`}
                       </p>
                     </div>
                     <ArrowRight className="hidden h-5 w-5 shrink-0 text-gold-dark transition-transform group-hover:translate-x-1 sm:block" />

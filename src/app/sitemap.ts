@@ -9,6 +9,7 @@ const STATIC_PAGES: { path: string; changeFrequency: "daily" | "weekly" | "month
   { path: "/", changeFrequency: "daily", priority: 1 },
   { path: "/shop", changeFrequency: "daily", priority: 0.9 },
   { path: "/studio", changeFrequency: "weekly", priority: 0.85 },
+  { path: "/studio/bouquet", changeFrequency: "weekly", priority: 0.85 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.5 },
   { path: "/shipping-policy", changeFrequency: "yearly", priority: 0.3 },
@@ -57,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly" as const,
         priority: 0.8,
       })),
-      ...studioCategories.map((c) => ({
+      ...studioCategories.filter((c) => c.slug !== "bouquet-builder").map((c) => ({
         url: absoluteUrl(`/studio/${c.slug}`),
         lastModified: c.updatedAt,
         changeFrequency: "weekly" as const,

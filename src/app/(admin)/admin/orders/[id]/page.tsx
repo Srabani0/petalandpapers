@@ -7,6 +7,39 @@ import { Badge } from "@/components/ui/Badge";
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
 import { CustomizationReviewPanel } from "@/components/admin/CustomizationReviewPanel";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_BADGE_VARIANT, getAllStatusOptions } from "@/lib/order-status";
+import { parseDesignDoc, type BouquetRecipe } from "@/lib/studio/doc";
+import { BOUQUET_FLOWERS, BOUQUET_SIZES, FILLERS, RIBBONS, WRAPS } from "@/lib/studio/bouquet";
+
+/** Workshop "recipe" for Bouquet Builder orders: exactly what to make. */
+function BouquetRecipeCard({ recipe }: { recipe: BouquetRecipe }) {
+  const name = (list: readonly { id: string; label: string }[], id: string) => list.find((x) => x.id === id)?.label ?? id;
+  return (
+    <div className="mt-2 rounded-lg border border-gold/40 bg-gold/5 p-3 text-xs text-navy">
+      <p className="font-semibold tracking-wide text-gold-dark uppercase">Bouquet recipe · {name(BOUQUET_SIZES, recipe.size)}</p>
+      <ul className="mt-1.5 grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
+        {recipe.flowers.map((f) => (
+          <li key={f.id}>
+            <span className="font-semibold tabular-nums">{f.count} ×</span> {BOUQUET_FLOWERS.find((x) => x.id === f.id)?.name ?? f.id}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5">
+        Wrap: <b>{name(WRAPS, recipe.wrap)}</b> · Ribbon: <b>{name(RIBBONS, recipe.ribbon)}</b>
+        {recipe.fillers.length ? (
+          <>
+            {" "}· Greenery: <b>{recipe.fillers.map((id) => name(FILLERS, id)).join(", ")}</b>
+          </>
+        ) : null}
+      </p>
+      {recipe.message || recipe.from ? (
+        <p className="mt-1.5">
+          Tag: <i>&ldquo;{recipe.message}&rdquo;</i>
+          {recipe.from ? <> — {recipe.from}</> : null}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -49,6 +82,15 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   if (!order) notFound();
 
   const address = order.addressSnapshot as unknown as AddressSnapshot;
+  const designIds = order.items.flatMap((item) => (item.designId ? [item.designId] : []));
+  const recipes = new Map<string, BouquetRecipe>();
+  if (designIds.length) {
+    const designs = await prisma.design.findMany({ where: { id: { in: designIds } }, select: { id: true, canvas: true } });
+    for (const d of designs) {
+      const parsed = parseDesignDoc(d.canvas);
+      if ("doc" in parsed && parsed.doc.meta?.bouquet) recipes.set(d.id, parsed.doc.meta.bouquet);
+    }
+  }
   const isCustomized = order.customizationRequests.length > 0 || order.items.some((item) => item.designId);
   const statusOptions = getAllStatusOptions(isCustomized);
 
@@ -105,6 +147,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
                             <Download className="h-3.5 w-3.5" /> Download print file
                           </a>
                         ) : null}
+                        {item.designId && recipes.get(item.designId) ? <BouquetRecipeCard recipe={recipes.get(item.designId)!} /> : null}
                       </div>
                     </div>
                     <div className="text-right text-sm">

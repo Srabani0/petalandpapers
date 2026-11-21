@@ -14,6 +14,9 @@ import {
   makePhoto,
   makeShape,
   makeText,
+  makeQr,
+  makeStarMap,
+  makeMoon,
   type DesignDoc,
   type DesignNode,
   type PhotoNode,
@@ -22,7 +25,8 @@ import {
 import { STUDIO_FONTS } from "@/components/studio/fonts";
 import { useDesignState } from "@/components/studio/editor/useDesignState";
 import { CanvasStage, type CanvasHandle, type DropPayload } from "@/components/studio/editor/CanvasStage";
-import { Sidebar, type ShapePreset, type StudioElement, type TextPreset } from "@/components/studio/editor/Sidebar";
+import { Sidebar, type ShapePreset, type SmartPreset, type StudioElement, type TextPreset } from "@/components/studio/editor/Sidebar";
+import { curvedTextPath } from "@/lib/studio/smart";
 import { PropertiesPanel } from "@/components/studio/editor/PropertiesPanel";
 import { Viewer3D } from "@/components/studio/three/Viewer3D";
 import { Preview3DModal } from "@/components/studio/three/Preview3DModal";
@@ -321,6 +325,63 @@ export function DesignEditor({
     [addNode, doc],
   );
 
+  const addSmart = useCallback(
+    (preset: SmartPreset) => {
+      const m = Math.min(doc.width, doc.height);
+      if (preset === "qr") return addNode(makeQr(doc));
+      if (preset === "moon") return addNode(makeMoon(doc));
+      if (preset === "heartPhoto" || preset === "circlePhoto") {
+        const size = Math.round(m * 0.42);
+        return addNode(
+          makePhoto(doc, {
+            mask: preset === "heartPhoto" ? "heart" : "circle",
+            width: size,
+            height: size,
+            x: Math.round((doc.width - size) / 2),
+            y: Math.round((doc.height - size) / 2),
+            stroke: "#ffffff",
+            strokeWidth: Math.round(size * 0.025),
+            padding: 0,
+            shadow: true,
+          }),
+        );
+      }
+      if (preset === "curved") {
+        const fontSize = Math.round(m * 0.07);
+        const width = Math.round(m * 0.7);
+        const curve = 45;
+        return addNode(
+          makeText(doc, {
+            text: "Forever & always",
+            fontFamily: "greatVibes",
+            fontSize,
+            width,
+            curve,
+            height: Math.round(curvedTextPath(width, fontSize, curve).height),
+            x: Math.round((doc.width - width) / 2),
+            y: Math.round(doc.height * 0.2),
+          }),
+        );
+      }
+      // Star map + a caption with the place and date underneath.
+      const size = Math.round(m * 0.66);
+      const map = makeStarMap(doc, { width: size, height: size, x: Math.round((doc.width - size) / 2), y: Math.round(doc.height * 0.1) });
+      const when = new Date(`${map.date}:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+      const caption = makeText(doc, {
+        text: `The night sky over ${map.place.split(",")[0]}\n${when}`,
+        fontFamily: "playfair",
+        fontSize: Math.round(m * 0.035),
+        lineHeight: 1.4,
+        width: Math.round(doc.width * 0.8),
+        x: Math.round(doc.width * 0.1),
+        y: map.y + size + Math.round(m * 0.04),
+        height: Math.round(m * 0.1),
+      });
+      commit((d) => ({ ...d, nodes: [...d.nodes, map, caption] }), { select: map.id });
+    },
+    [addNode, commit, doc],
+  );
+
   const addShape = useCallback(
     (preset: ShapePreset) => {
       const m = Math.min(doc.width, doc.height);
@@ -543,6 +604,7 @@ export function DesignEditor({
               onUsePhoto={(src) => placePhoto(src)}
               onAddText={addText}
               onAddShape={addShape}
+              onAddSmart={addSmart}
               onBackground={setBackground}
               onUploadBackground={uploadBackground}
               mobileOpen={libraryOpen}
