@@ -19,7 +19,6 @@ import {
   Palette,
   Menu,
   X,
-  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +41,6 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const isActive = (href: string) => (href === "/admin" ? pathname === href : pathname.startsWith(href));
-  const TABS = NAV_ITEMS.filter((n) => ["/admin", "/admin/orders", "/admin/products", "/admin/studio"].includes(n.href));
-  const moreActive = !TABS.some((t) => isActive(t.href));
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -145,46 +142,6 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
         </div>
       </aside>
 
-      {/* Phones: app-style bottom tabs for the most used sections; "More" opens the full menu. */}
-      <nav
-        aria-label="Admin"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-paper/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-16px_rgba(30,42,74,0.35)] backdrop-blur-md lg:hidden"
-      >
-        <ul className="mx-auto flex h-16 max-w-md items-stretch justify-around px-1">
-          {[...TABS.map((t) => ({ ...t, active: isActive(t.href) })), { href: "", label: "More", icon: MoreHorizontal, active: moreActive || open }].map(
-            ({ href, label, icon: Icon, active }) => {
-              const inner = (
-                <>
-                  <span
-                    className={cn(
-                      "flex h-8 w-12 items-center justify-center rounded-full transition-all duration-200 group-active:scale-90",
-                      active ? "bg-navy text-cream" : "text-navy/55",
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className={cn("text-[11px] leading-none font-medium", active ? "text-navy" : "text-navy/55")}>
-                    {label === "Design Studio" ? "Studio" : label}
-                  </span>
-                </>
-              );
-              return (
-                <li key={label} className="flex flex-1">
-                  {href ? (
-                    <Link href={href} onClick={() => setOpen(false)} className="group flex flex-1 flex-col items-center justify-center gap-1">
-                      {inner}
-                    </Link>
-                  ) : (
-                    <button type="button" onClick={() => setOpen(true)} className="group flex flex-1 flex-col items-center justify-center gap-1">
-                      {inner}
-                    </button>
-                  )}
-                </li>
-              );
-            },
-          )}
-        </ul>
-      </nav>
     </>
   );
 }
