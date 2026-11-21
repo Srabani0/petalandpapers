@@ -19,6 +19,7 @@ export const SITE = {
   // Same number as the WhatsApp chat button.
   phone: "+91 84880 82783",
   whatsapp: "918488082783",
+  instagram: "petalandpapers",
   locale: "en_IN",
   country: "IN",
   currency: "INR",
@@ -59,11 +60,17 @@ export const SITE = {
     google: process.env.GOOGLE_SITE_VERIFICATION,
     bing: process.env.BING_SITE_VERIFICATION,
   },
-  // Optional social profiles, comma-separated in env — fed into Organization `sameAs`.
-  sameAs: (process.env.SOCIAL_PROFILE_URLS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
+  // Social profiles — fed into Organization `sameAs` and the footer icons.
+  // Instagram is built in; add more (comma-separated) via SOCIAL_PROFILE_URLS.
+  sameAs: [
+    ...new Set([
+      "https://www.instagram.com/petalandpapers/",
+      ...(process.env.SOCIAL_PROFILE_URLS ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ]),
+  ],
 } as const;
 
 export function siteUrl() {

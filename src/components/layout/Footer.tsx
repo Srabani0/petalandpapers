@@ -138,6 +138,17 @@ export function Footer() {
               </a>
             </li>
             <li>
+              <a
+                href={`https://www.instagram.com/${SITE.instagram}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-2 hover:text-gold-dark"
+              >
+                <InstagramIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#d62976]" />
+                <span>@{SITE.instagram}</span>
+              </a>
+            </li>
+            <li>
               <a href={`tel:${SITE.phone.replace(/\s+/g, "")}`} className="flex items-start gap-2 hover:text-gold-dark">
                 <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gold-dark" />
                 <span>{SITE.phone}</span>
