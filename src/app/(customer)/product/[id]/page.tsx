@@ -195,8 +195,8 @@ export default async function ProductDetailPage({ params }: Props) {
             Delivery in {product.deliveryTime}
           </div>
 
-          {/* Phones: buy bar pinned above the tab bar (price + button), like a shopping app. */}
-          <div className="fixed inset-x-0 bottom-[var(--tabbar-h)] z-30 flex items-center gap-3 border-t border-border bg-paper/95 px-4 py-3 shadow-[0_-10px_24px_-18px_rgba(30,42,74,0.45)] backdrop-blur-md lg:static lg:mt-8 lg:block lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
+          {/* Phones: buy bar pinned to the bottom (price + button), like a shopping app. */}
+          <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-border bg-paper/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_24px_-18px_rgba(30,42,74,0.45)] backdrop-blur-md lg:static lg:mt-8 lg:block lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
             <div className="min-w-0 shrink-0 lg:hidden">
               <p className="font-display text-lg leading-tight text-navy">₹{product.finalPrice.toFixed(0)}</p>
               {hasDiscount ? <p className="text-xs text-muted line-through">₹{product.price.toFixed(0)}</p> : null}

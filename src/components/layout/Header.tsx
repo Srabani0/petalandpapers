@@ -101,7 +101,7 @@ export function Header({
             </IconButton>
           ) : null}
           <AccountMenu user={user} />
-          <IconButton href="/cart" label="Cart" className="hidden lg:inline-flex">
+          <IconButton href="/cart" label="Cart">
             <ShoppingBag className="h-5 w-5" />
             {cartCount > 0 ? (
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-cream">
@@ -123,7 +123,7 @@ export function Header({
       </div>
 
       {mobileOpen ? (
-        <nav className="pp-rise max-h-[calc(100dvh-3.5rem-var(--tabbar-h))] overflow-y-auto border-t border-border bg-cream px-4 py-3 lg:hidden">
+        <nav className="pp-rise max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-t border-border bg-cream px-4 py-3 lg:hidden">
           <ul className="flex flex-col gap-1">
             {[
               ...NAV_LINKS,

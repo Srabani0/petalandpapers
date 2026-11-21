@@ -176,8 +176,8 @@ export function CartView({
         </div>
       </div>
 
-      {/* Phones: checkout bar pinned above the tab bar, like a shopping app. */}
-      <div className="fixed inset-x-0 bottom-[var(--tabbar-h)] z-30 border-t border-border bg-paper/95 px-4 py-3 shadow-[0_-10px_24px_-18px_rgba(30,42,74,0.45)] backdrop-blur-md lg:hidden">
+      {/* Phones: checkout bar pinned to the bottom, like a shopping app. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-paper/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_24px_-18px_rgba(30,42,74,0.45)] backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-md items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted">Total</p>

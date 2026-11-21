@@ -18,7 +18,7 @@ export function WhatsAppButton() {
   return (
     <div
       className={cn(
-        "fixed right-4 bottom-[calc(var(--tabbar-h)+0.75rem)] z-50 flex-col items-end gap-3 lg:right-5 lg:bottom-5 lg:flex",
+        "fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex-col items-end gap-3 lg:right-5 lg:bottom-5 lg:flex",
         hasActionBar ? "hidden" : "flex",
       )}
     >
